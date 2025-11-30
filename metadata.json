@@ -1,0 +1,5 @@
+{
+  "name": "StarCrawler_V0.1.7",
+  "description": "A classic roguelike RPG with a focus on exploration and atmosphere, rendered entirely in ASCII art. Explore procedurally generated derelict space stations and uncover cosmic mysteries.",
+  "requestFramePermissions": []
+}
