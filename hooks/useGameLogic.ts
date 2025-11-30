@@ -2127,6 +2127,7 @@ export const useGameLogic = (onGameOver: () => void) => {
       buyMapIntel, // Exported
       equipItem: useOrEquipItem, 
       assignQuickSlot, 
+      useQuickSlot,
       movePlayer, 
       interact, 
       toggleMinimap,

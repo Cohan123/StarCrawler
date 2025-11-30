@@ -16,23 +16,24 @@ const MenuButton: React.FC<{ onClick: () => void, children: React.ReactNode, dis
         className={`
             relative overflow-hidden
             w-full md:w-64 py-4 m-2
-            ${primary ? 'border-green-700 from-gray-800 to-gray-900' : 'border-gray-600 from-gray-700 to-gray-800'}
+            ${primary ? 'border-green-700/80 from-gray-900/80 to-black/80' : 'border-gray-600/50 from-gray-900/60 to-black/60'}
             bg-gradient-to-b 
             border-4 rounded-lg
             text-green-400 font-bold tracking-widest text-lg uppercase font-mono
-            shadow-[0_10px_20px_rgba(0,0,0,0.5),inset_0_2px_0_rgba(255,255,255,0.1)]
-            hover:text-green-200 hover:border-green-500 hover:shadow-[0_0_20px_rgba(74,222,128,0.4)] hover:-translate-y-1
+            shadow-[0_10px_20px_rgba(0,0,0,0.3),inset_0_2px_0_rgba(255,255,255,0.05)]
+            hover:text-green-200 hover:border-green-500/80 hover:bg-black/80 hover:shadow-[0_0_20px_rgba(74,222,128,0.2)] hover:-translate-y-1
             active:translate-y-0.5 active:shadow-none
             disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
             transition-all duration-200
             group
+            backdrop-blur-sm
         `}
     >
         {/* Screw heads - Visual Detail */}
-        <div className="absolute top-2 left-2 w-2 h-2 bg-gray-500 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
-        <div className="absolute top-2 right-2 w-2 h-2 bg-gray-500 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
-        <div className="absolute bottom-2 left-2 w-2 h-2 bg-gray-500 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
-        <div className="absolute bottom-2 right-2 w-2 h-2 bg-gray-500 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
+        <div className="absolute top-2 left-2 w-2 h-2 bg-gray-500/50 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
+        <div className="absolute top-2 right-2 w-2 h-2 bg-gray-500/50 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
+        <div className="absolute bottom-2 left-2 w-2 h-2 bg-gray-500/50 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
+        <div className="absolute bottom-2 right-2 w-2 h-2 bg-gray-500/50 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.8)]" />
         
         <span className="relative z-10 drop-shadow-md group-hover:text-white transition-colors">{children}</span>
     </button>
@@ -53,7 +54,8 @@ const ClassCard: React.FC<{
             flex flex-col items-center
             border-2 p-4 rounded-lg w-full md:w-1/3
             transition-all duration-200
-            ${isSelected ? 'bg-green-900/40 border-green-400 scale-105 shadow-[0_0_15px_rgba(74,222,128,0.3)]' : 'bg-gray-800/60 border-gray-600 hover:bg-gray-700 hover:border-gray-400'}
+            backdrop-blur-sm
+            ${isSelected ? 'bg-green-900/40 border-green-400/80 scale-105 shadow-[0_0_15px_rgba(74,222,128,0.2)]' : 'bg-gray-900/40 border-gray-600/50 hover:bg-gray-800/60 hover:border-gray-400/60'}
         `}
     >
         <pre className={`text-sm mb-4 leading-none font-bold ${isSelected ? 'text-green-300' : 'text-gray-400'}`}>
@@ -61,7 +63,7 @@ const ClassCard: React.FC<{
         </pre>
         <h3 className={`text-xl font-bold tracking-widest uppercase mb-2 ${isSelected ? 'text-white' : 'text-gray-300'}`}>{title}</h3>
         <p className="text-gray-400 text-xs text-center mb-3 h-12">{desc}</p>
-        <div className={`text-xs font-bold uppercase tracking-wide border-t border-gray-600 pt-2 w-full text-center ${isSelected ? 'text-yellow-300' : 'text-gray-500'}`}>
+        <div className={`text-xs font-bold uppercase tracking-wide border-t border-gray-600/50 pt-2 w-full text-center ${isSelected ? 'text-yellow-300' : 'text-gray-500'}`}>
             {bonus}
         </div>
     </div>
@@ -85,22 +87,22 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
         }
     };
 
-    // User provided background image
-    const bgUrl = "https://lh3.googleusercontent.com/rd-gg/AIJ2gl8nwUWRugzTri9Ten7sRAbW-hlCkHxJEV_1svPFu9vBSkRUbPcyIJX4JFcl7S3oKSDD_WnaB48FNiAjHgeTn5bAMg05XQZyhFelMsVExzHcbK1YjJUuDwXLV8Rr59O8W_H9NJDJAyv8WYyW4Qtx7e3BccLOU--_2nJrdLzY_RNQ7pF8gcxJp7WlHRCYXEsAChd73Jl-evgfHdWIwhk7vg4hC6VE32q05TIdhCpnOvAHqcQRnepXGZSgd-9PfNGQf1VW3Y9QIQeQYffJXvgOeEjmRfJa66Ix9PLH-01_uBtKm1kAkbnn6Ree5SI4Blih7bbggz67zugSLEHNEFvbV98sXjd2IjHYnYa55VVICMI21Z40VLfnmjtZVVFSNx3i196Nmwy3eZ2Yv1iNIxaR7qyCeeYyXltmMladOty46wLaIczdoZ_j5a2T637ZEbRyUN5oS9NMnhbfKUVs6XmBS7iD056GXm7qVlSpaTqCF7ikW0UMP75bs3_fw-pV0GAhCeiRPAj6XJEunZEfcPQdCXyshN8NJ9FXM_qKpb5wZDyfqRCO6x-DII0zhRBYWT3sBkJQIXDFXJfOPDq3Als7wl8bo7zP1v6eP_3zTghWHRcYHUog4BFqZN6L9_kMKTL4HaOk7eyxlQ3O7nkTcv9sKWGPCqQ1h5AnTuEJasS8vxVvwSDwd_VdVNG4MAtLwbVTrr9rMhshYNcHW1uVDQzfMOTSGNNP4TLyAt1E--W0LCD1bKRYiUcQB9aoVNfaJMfvZIUWupoWMiZsddNnUNLbr9m0MuFwAsMhHIk0lZwsmUJuDiheqjJulAnP9JKALY870gvrVcWArCyW0BahfGWRkpEkPYwH_6aSweXTt0cbU0ZGJEpEmAyA3Lp7SIyG5VbuQjlZc7z1YyAadSr_1NXDJau5PJdpH-Z_v0qtCkjbKe8n3M8zfSW6hjsI6AR4utOVjgjFxewj36fGgdXZnhdNar37jxBX1SOUdy0uKevgPn-hhKkdhxAYODn9Fgnqkcn9NoVD5cG8gUZfOxToKZeSnhr2a4ILR1A8KZezQOyPtZXFYLSCirUUEiilphlvhF1rX4j2QMdWKnd2ZYVYUpMLiOMa3FCI4p9vlWc1Yo2QsF0ZpOzepivBpleyUrj2wHzqf6Ah7ovG53O_4GB9kngcltphdt9LL-Q280cnuEc30hZI_vWEdfMhV04vZWIGDLmZiRn3H5ScaAUVtvJrOWp2rifEcP_KKzWaNYLjXUEKarFVl0IB84TQZndqgLfRRa82-8HNxCcQr_Xosm81n1iTUN49VxBaGkZzgjMQnfGv7nJ9xBmy9kFVpokIZwpYYlUK-A3NIEUHvFzlIGci-NicXQ=s1024-rj";
+    // User provided background image - Sci-Fi Space Theme
+    const bgUrl = "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2bcbc897-5739-4863-b322-e657d85f02fc/original=true,quality=90/1000080560.jpeg";
 
     return (
         <div className="absolute inset-0 bg-black flex flex-col items-center justify-center z-50 p-4 font-mono overflow-hidden">
              {/* Background Image with Overlay */}
              <div 
-                className="absolute inset-0 z-0 opacity-60"
+                className="absolute inset-0 z-0 opacity-80"
                 style={{ 
                     backgroundImage: `url(${bgUrl})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                 }}
              />
-             <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-             <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/40 to-black" />
+             <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+             <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/30 to-black" />
 
 
             <div className="relative z-10 w-full max-w-5xl flex flex-col items-center justify-center space-y-8">
@@ -120,18 +122,18 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
                 {/* Main Menu Panel */}
                 <div className="
                     w-full
-                    bg-gray-900/80 backdrop-blur-md
-                    border-4 border-gray-600 rounded-xl
-                    shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(0,0,0,0.5)]
+                    bg-black/40 backdrop-blur-md
+                    border-4 border-gray-600/30 rounded-xl
+                    shadow-[0_0_50px_rgba(0,0,0,0.5),inset_0_0_20px_rgba(0,0,0,0.2)]
                     p-8 md:p-12
                     flex flex-col items-center
                     relative
                 ">
                     {/* Panel Bolts */}
-                    <div className="absolute top-3 left-3 w-4 h-4 bg-gray-500 rounded-full border border-black shadow-inner" />
-                    <div className="absolute top-3 right-3 w-4 h-4 bg-gray-500 rounded-full border border-black shadow-inner" />
-                    <div className="absolute bottom-3 left-3 w-4 h-4 bg-gray-500 rounded-full border border-black shadow-inner" />
-                    <div className="absolute bottom-3 right-3 w-4 h-4 bg-gray-500 rounded-full border border-black shadow-inner" />
+                    <div className="absolute top-3 left-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
+                    <div className="absolute top-3 right-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
+                    <div className="absolute bottom-3 left-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
+                    <div className="absolute bottom-3 right-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
 
 
                     {step === 'name' && (
@@ -148,11 +150,12 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
                                     placeholder="NAME EINGEBEN..."
                                     className="
                                         w-full p-4 
-                                        bg-black/80 border-2 border-green-800 
+                                        bg-black/60 border-2 border-green-800/60
                                         text-green-400 text-center text-2xl font-bold uppercase tracking-widest
-                                        focus:outline-none focus:border-green-400 focus:shadow-[0_0_20px_rgba(74,222,128,0.3)]
-                                        placeholder-green-900
+                                        focus:outline-none focus:border-green-400 focus:bg-black/80 focus:shadow-[0_0_20px_rgba(74,222,128,0.3)]
+                                        placeholder-green-900/50
                                         rounded
+                                        backdrop-blur-sm
                                     "
                                     autoFocus
                                 />
@@ -165,7 +168,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
                                 <MenuButton onClick={handleStartClick} disabled={!playerName.trim()} primary>Bestätigen</MenuButton>
                                 <button 
                                     onClick={() => setStep('class')} 
-                                    className="text-gray-500 hover:text-white uppercase tracking-widest text-sm hover:underline"
+                                    className="text-gray-500 hover:text-white uppercase tracking-widest text-sm hover:underline shadow-black drop-shadow-md"
                                 >
                                     Zurück
                                 </button>
@@ -220,7 +223,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
                                 <MenuButton onClick={() => setStep('name')} primary>Weiter</MenuButton>
                                 <button 
                                     onClick={() => setStep('menu')} 
-                                    className="text-gray-500 hover:text-white uppercase tracking-widest text-sm hover:underline"
+                                    className="text-gray-500 hover:text-white uppercase tracking-widest text-sm hover:underline shadow-black drop-shadow-md"
                                 >
                                     Abbruch
                                 </button>
@@ -246,7 +249,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
             </div>
             
              <div className="absolute bottom-4 text-center w-full pointer-events-none">
-                <p className="text-gray-600 text-xs font-mono">SYSTEM V0.2.1 // CONNECTED</p>
+                <p className="text-gray-500 text-xs font-mono drop-shadow-md">SYSTEM V0.2.2 // CONNECTED</p>
              </div>
         </div>
     );

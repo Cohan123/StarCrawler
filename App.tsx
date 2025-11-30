@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import GameScreen from './components/GameScreen';
 import SidePanel from './components/SidePanel';
@@ -25,28 +26,10 @@ function App() {
     }, 4000); 
   };
 
-  const { 
-      gameState, 
-      isLoading, 
-      initializeGame, 
-      levelCache, 
-      closeShop, 
-      buyItem,
-      sellItem,
-      buyMapIntel,
-      equipItem, 
-      assignQuickSlot,
-      movePlayer, 
-      interact, 
-      toggleMinimap,
-      startWalking,
-      hoverTile,
-      applyLevelUp,
-      fireNearestEnemy
-  } = useGameLogic(handleGameOver);
+  const gameLogic = useGameLogic(handleGameOver);
 
   const startGame = (playerName: string, selectedClass: CharacterClass) => {
-    initializeGame(playerName, selectedClass);
+    gameLogic.initializeGame(playerName, selectedClass);
     setGameView('game');
   };
 
@@ -61,9 +44,10 @@ function App() {
     }
   };
 
-
-  const renderGameView = () => {
-    switch (gameView) {
+  return (
+      <>
+       {(() => {
+        switch (gameView) {
         case 'start':
             return <StartScreen 
                         onStart={startGame} 
@@ -84,7 +68,7 @@ function App() {
                     <header className="flex-shrink-0 border-b border-gray-800 p-2 flex justify-between items-center bg-gray-900 z-20">
                          <div className="flex items-center gap-4">
                             <h1 className="text-lg text-green-500 tracking-widest font-bold">STAR CRAWLER</h1>
-                            <span className="text-xs text-gray-500 hidden sm:inline">| SEKTOR {gameState.depth} | {gameState.playerName} | LVL {gameState.player.level}</span>
+                            <span className="text-xs text-gray-500 hidden sm:inline">| SEKTOR {gameLogic.gameState.depth} | {gameLogic.gameState.playerName} | LVL {gameLogic.gameState.player.level}</span>
                          </div>
                          <div className="text-xs text-gray-600">SYS.VER.0.3</div>
                     </header>
@@ -92,82 +76,86 @@ function App() {
                     {/* Main Content Area: Game + Sidebar */}
                     <div className="flex-grow flex min-h-0 relative">
                         {/* Hazard Overlay */}
-                        <div className={`absolute inset-0 pointer-events-none z-10 transition-all duration-500 ${getHazardOverlayClass(gameState.hazardZone)}`} />
+                        <div className={`absolute inset-0 pointer-events-none z-10 transition-all duration-500 ${getHazardOverlayClass(gameLogic.gameState.hazardZone)}`} />
                         
                         {/* Game Board */}
                         <div className="flex-grow relative flex flex-col min-w-0">
                              <GameScreen 
-                                map={gameState.map} 
-                                playerPos={gameState.player.position}
-                                visibleCells={gameState.visibleCells}
-                                revealedCells={gameState.revealedCells}
-                                enemies={gameState.enemies}
-                                discharges={gameState.discharges}
-                                groundItems={gameState.groundItems}
-                                playerHurt={gameState.playerHurt}
-                                hoverInfo={gameState.hoverInfo}
-                                onTileClick={startWalking}
-                                onTileHover={hoverTile}
-                                visualEffects={gameState.visualEffects}
-                                deployedDevices={gameState.deployedDevices}
+                                map={gameLogic.gameState.map} 
+                                playerPos={gameLogic.gameState.player.position}
+                                visibleCells={gameLogic.gameState.visibleCells}
+                                revealedCells={gameLogic.gameState.revealedCells}
+                                enemies={gameLogic.gameState.enemies}
+                                discharges={gameLogic.gameState.discharges}
+                                groundItems={gameLogic.gameState.groundItems}
+                                playerHurt={gameLogic.gameState.playerHurt}
+                                hoverInfo={gameLogic.gameState.hoverInfo}
+                                onTileClick={gameLogic.startWalking}
+                                onTileHover={gameLogic.hoverTile}
+                                visualEffects={gameLogic.gameState.visualEffects}
+                                deployedDevices={gameLogic.gameState.deployedDevices}
                                 />
                         </div>
 
                         {/* Right Sidebar */}
                         <div className="flex-shrink-0 w-64 border-l border-gray-800 hidden lg:block h-full">
                             <SidePanel 
-                                player={gameState.player} 
-                                depth={gameState.depth}
-                                playerName={gameState.playerName}
-                                map={gameState.map}
-                                revealedCells={gameState.revealedCells}
-                                playerPos={gameState.player.position}
+                                player={gameLogic.gameState.player} 
+                                depth={gameLogic.gameState.depth}
+                                playerName={gameLogic.gameState.playerName}
+                                map={gameLogic.gameState.map}
+                                revealedCells={gameLogic.gameState.revealedCells}
+                                playerPos={gameLogic.gameState.player.position}
                             />
                         </div>
                     </div>
 
                     {/* Bottom Log Panel */}
                     <div className="flex-shrink-0 h-48 border-t border-gray-800 z-20">
-                        <MessageLog messages={gameState.messageHistory} />
+                        <MessageLog messages={gameLogic.gameState.messageHistory} />
                     </div>
 
                     {/* Modals & Overlays */}
-                    {!gameState.isGameOver && !gameState.isShopOpen && !gameState.isMinimapOpen && !gameState.isLevelUpScreenOpen && (
+                    {!gameLogic.gameState.isGameOver && !gameLogic.gameState.isShopOpen && !gameLogic.gameState.isMinimapOpen && !gameLogic.gameState.isLevelUpScreenOpen && (
                         <MobileControls 
-                            onMove={movePlayer} 
-                            onInteract={interact} 
-                            onToggleMap={toggleMinimap}
-                            onFire={fireNearestEnemy}
+                            onMove={gameLogic.movePlayer} 
+                            onInteract={gameLogic.interact} 
+                            onToggleMap={gameLogic.toggleMinimap}
+                            onFire={gameLogic.fireNearestEnemy}
+                            onQuickSlot={(slot) => {
+                                gameLogic.useQuickSlot(slot);
+                            }}
+                            quickSlots={gameLogic.gameState.player.quickSlots}
                         />
                     )}
                     
-                    {gameState.isLevelUpScreenOpen && (
-                        <LevelUpScreen onSelect={applyLevelUp} />
+                    {gameLogic.gameState.isLevelUpScreenOpen && (
+                        <LevelUpScreen onSelect={gameLogic.applyLevelUp} />
                     )}
 
-                    {gameState.isShopOpen && (
+                    {gameLogic.gameState.isShopOpen && (
                         <ShopScreen
-                            player={gameState.player}
-                            onPurchase={buyItem}
-                            onSell={sellItem}
-                            onBuyIntel={buyMapIntel}
-                            onClose={closeShop}
+                            player={gameLogic.gameState.player}
+                            onPurchase={gameLogic.buyItem}
+                            onSell={gameLogic.sellItem}
+                            onBuyIntel={gameLogic.buyMapIntel}
+                            onClose={gameLogic.closeShop}
                         />
                     )}
 
-                    {gameState.isMinimapOpen && (
+                    {gameLogic.gameState.isMinimapOpen && (
                         <MinimapScreen 
-                        gameState={gameState}
-                        levelCache={levelCache}
-                        onEquipItem={equipItem}
-                        onAssignQuickSlot={assignQuickSlot}
-                        onClose={toggleMinimap}
+                        gameState={gameLogic.gameState}
+                        levelCache={gameLogic.levelCache}
+                        onEquipItem={gameLogic.equipItem}
+                        onAssignQuickSlot={gameLogic.assignQuickSlot}
+                        onClose={gameLogic.toggleMinimap}
                         />
                     )}
 
-                    {gameState.isGameOver && (
+                    {gameLogic.gameState.isGameOver && (
                         <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 animate-fadeIn">
-                             {gameState.isVictory ? (
+                             {gameLogic.gameState.isVictory ? (
                                 <>
                                     <p className="text-6xl text-green-500 mb-4 font-bold tracking-widest animate-pulse">MISSION ERFOLGREICH</p>
                                     <p className="text-xl text-green-300 mb-8">Shuttle-Startsequenz initiiert...</p>
@@ -201,14 +189,9 @@ function App() {
                  </div>
             );
         default:
-             return <StartScreen onStart={startGame} onWiki={() => {}} onHighscore={() => {}} onManual={() => {}} />;
+             return <StartScreen onStart={startGame} onWiki={() => setGameView('wiki')} onHighscore={() => setGameView('highscore')} onManual={() => setGameView('manual')} />;
     }
-  };
-
-
-  return (
-      <>
-      {renderGameView()}
+    })()}
       </>
   );
 }
