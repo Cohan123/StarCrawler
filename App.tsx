@@ -1,6 +1,5 @@
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import GameScreen from './components/GameScreen';
 import SidePanel from './components/SidePanel';
 import MessageLog from './components/MessageLog'; 
@@ -17,8 +16,18 @@ import { HazardZoneType, CharacterClass } from './types';
 
 type GameView = 'start' | 'game' | 'wiki' | 'highscore' | 'manual';
 
+// Reliable direct MP3 links
+const MENU_MUSIC = "https://cdn.discordapp.com/attachments/1445125760552796304/1445125899027742834/Hetzjagd.mp3?ex=692f35df&is=692de45f&hm=6e20b20ec14b4a1b01362cbfb509b08b56b723c8efcd93dc8255c9537df196d9&";
+const GAME_MUSIC = [
+    "https://cdn.discordapp.com/attachments/1445125760552796304/1445770157988253758/Vakuum.mp3?ex=69318de2&is=69303c62&hm=9d8d143483689f45a3010b7e0c968bef1183889ee73fee72b1b722f6f3b5f924&",
+    "https://cdn.discordapp.com/attachments/1445125760552796304/1445127760652796035/Eisige_Leere.mp3?ex=692f379b&is=692de61b&hm=8a57b1c91647c5e03a84c72af2410bea86c501cf6f283cb0c9116bd6a7a02a48&",
+    "https://cdn.discordapp.com/attachments/1445125760552796304/1445127761286004936/Starre_Angst.mp3?ex=692f379b&is=692de61b&hm=473e0465ac90facacc86d3e98bd758158ffab549c5b9f6a69a94e4b27409fc53&"
+];
+
 function App() {
   const [gameView, setGameView] = useState<GameView>('start');
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const handleGameOver = () => {
     setTimeout(() => {
@@ -30,8 +39,58 @@ function App() {
 
   const startGame = (playerName: string, selectedClass: CharacterClass) => {
     gameLogic.initializeGame(playerName, selectedClass);
+    setCurrentTrackIndex(0); // Reset playlist
     setGameView('game');
   };
+
+  // Background Music Logic
+  useEffect(() => {
+    if (!audioRef.current) {
+        audioRef.current = new Audio();
+        audioRef.current.volume = 0.25; // Lower volume for atmosphere
+    }
+    const audio = audioRef.current;
+
+    const playMusic = async (url: string, loop: boolean) => {
+        try {
+            // Only update src if it's different to prevent restarting same track
+            if (audio.src !== url) {
+                audio.src = url;
+                audio.loop = loop;
+                audio.load(); // Ensure the new source is loaded
+                await audio.play();
+            } else if (audio.paused) {
+                await audio.play();
+            }
+        } catch (err) {
+            console.log("Audio play failed (Autoplay policy or error):", err);
+            // Add a one-time listener to resume audio on interaction
+            const resume = () => {
+                audio.play().catch(e => console.error("Resume failed:", e));
+                window.removeEventListener('click', resume);
+                window.removeEventListener('keydown', resume);
+                window.removeEventListener('touchstart', resume);
+            };
+            window.addEventListener('click', resume);
+            window.addEventListener('keydown', resume);
+            window.addEventListener('touchstart', resume);
+        }
+    };
+
+    if (gameView === 'game') {
+        // Game Playlist Mode
+        audio.onended = () => {
+            setCurrentTrackIndex((prev) => (prev + 1) % GAME_MUSIC.length);
+        };
+        playMusic(GAME_MUSIC[currentTrackIndex], false);
+    } else {
+        // Menu Mode (Start, Wiki, Highscore, Manual)
+        audio.onended = null;
+        playMusic(MENU_MUSIC, true);
+    }
+
+  }, [gameView, currentTrackIndex]);
+
 
   const getHazardOverlayClass = (hazardZone: HazardZoneType) => {
     switch (hazardZone) {

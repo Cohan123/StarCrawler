@@ -47,7 +47,7 @@ export interface Armor extends Item {
     defense: number;
 }
 
-export type ConsumableEffect = 'HEAL' | 'STUN_AOE' | 'BUFF_ATTACK' | 'REVEAL_MAP' | 'RESTORE_AMMO' | 'SPAWN_DRONE' | 'SPAWN_TURRET' | 'SPAWN_SHIELD' | 'EXPLOSIVE_GRENADE';
+export type ConsumableEffect = 'HEAL' | 'STUN_AOE' | 'BUFF_ATTACK' | 'REVEAL_MAP' | 'RESTORE_AMMO' | 'SPAWN_DRONE' | 'SPAWN_TURRET' | 'SPAWN_SHIELD' | 'EXPLOSIVE_GRENADE' | 'SPAWN_BARREL' | 'SCAN_AREA';
 
 export interface Consumable extends Item {
     effect: ConsumableEffect;
@@ -64,7 +64,7 @@ export interface GroundItem {
     position: Position;
 }
 
-export type CharacterClass = 'MARINE' | 'TECHNICIAN' | 'SCOUT';
+export type CharacterClass = 'MARINE' | 'TECHNICIAN' | 'SCOUT' | 'SCAVENGER' | 'CYBORG' | 'DEMOLITIONIST' | 'SUBJECT_D';
 
 export interface Player {
   name: string;

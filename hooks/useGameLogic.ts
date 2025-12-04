@@ -7,7 +7,7 @@ import { generateLogEntry } from '../services/geminiService';
 import { calculateFov } from '../utils/fov';
 import { playSound } from '../utils/audio';
 import { saveHighscore } from '../utils/highscore';
-import { getLootItem, WEAPONS, CONSUMABLES, ARMORS } from '../data/items';
+import { getLootItem, WEAPONS, CONSUMABLES, ARMORS, ALL_ITEMS } from '../data/items';
 import { findPath } from '../utils/pathfinding';
 import { getTileDescription } from '../utils/descriptions';
 import { getFlavorText } from '../utils/flavorText';
@@ -192,6 +192,11 @@ export const useGameLogic = (onGameOver: () => void) => {
         const addEffectInternal = (effect: Omit<VisualEffect, 'id' | 'startTime'>) => {
             nextState.visualEffects.push({ ...effect, id: Math.random().toString(36), startTime: Date.now() });
         };
+        
+        // Subject D Auto-Heal (Immortality)
+        if (player.class === 'SUBJECT_D') {
+             nextState.player.health = nextState.player.maxHealth;
+        }
 
         // Handle Buffs
         if (nextState.player.buffTurns > 0) {
@@ -256,15 +261,21 @@ export const useGameLogic = (onGameOver: () => void) => {
 
         if (playerCell === CellType.RADIATION) {
             newHazardZone = 'radiation';
-            if (nextState.player.radioactivity < nextState.player.maxRadioactivity) {
-                nextState.player.radioactivity++;
-            }
-            if (nextState.player.radioactivity >= nextState.player.maxRadioactivity) {
-                const dmg = 2;
-                nextState.player.health = Math.max(0, nextState.player.health - dmg);
-                if(dmg > 0) addEffectInternal({ type: 'floating_text', position: player.position, text: `-${dmg}`, color: 'text-green-500', duration: 800 });
-                if (nextState.player.health === 0 && !causeOfDeath) causeOfDeath = "Strahlenvergiftung";
-                pushMsg("WARNUNG: Kritische Strahlung! Hülle korrodiert.", 'warning');
+            // CYBORG Immunity
+            if (player.class !== 'CYBORG') {
+                if (nextState.player.radioactivity < nextState.player.maxRadioactivity) {
+                    nextState.player.radioactivity++;
+                }
+                if (nextState.player.radioactivity >= nextState.player.maxRadioactivity) {
+                    const dmg = 2;
+                    // Subject D Immune
+                    if (player.class !== 'SUBJECT_D') {
+                        nextState.player.health = Math.max(0, nextState.player.health - dmg);
+                        if(dmg > 0) addEffectInternal({ type: 'floating_text', position: player.position, text: `-${dmg}`, color: 'text-green-500', duration: 800 });
+                        if (nextState.player.health === 0 && !causeOfDeath) causeOfDeath = "Strahlenvergiftung";
+                    }
+                    pushMsg("WARNUNG: Kritische Strahlung! Hülle korrodiert.", 'warning');
+                }
             }
         } else {
             if (nextState.player.radioactivity > 0) {
@@ -274,15 +285,21 @@ export const useGameLogic = (onGameOver: () => void) => {
 
         if (playerCell === CellType.VACUUM) {
             newHazardZone = 'vacuum';
-            if (nextState.player.air > 0) {
-                nextState.player.air--;
-            }
-            if (nextState.player.air <= 0) {
-                const dmg = 2;
-                nextState.player.health = Math.max(0, nextState.player.health - dmg);
-                if(dmg > 0) addEffectInternal({ type: 'floating_text', position: player.position, text: `-${dmg}`, color: 'text-gray-400', duration: 800 });
-                if (nextState.player.health === 0 && !causeOfDeath) causeOfDeath = "Erstickung";
-                pushMsg("WARNUNG: O2 Reserve kritisch! Erstickungsgefahr.", 'warning');
+            // CYBORG Immunity
+            if (player.class !== 'CYBORG') {
+                if (nextState.player.air > 0) {
+                    nextState.player.air--;
+                }
+                if (nextState.player.air <= 0) {
+                    const dmg = 2;
+                    // Subject D Immune
+                    if (player.class !== 'SUBJECT_D') {
+                        nextState.player.health = Math.max(0, nextState.player.health - dmg);
+                        if(dmg > 0) addEffectInternal({ type: 'floating_text', position: player.position, text: `-${dmg}`, color: 'text-gray-400', duration: 800 });
+                        if (nextState.player.health === 0 && !causeOfDeath) causeOfDeath = "Erstickung";
+                    }
+                    pushMsg("WARNUNG: O2 Reserve kritisch! Erstickungsgefahr.", 'warning');
+                }
             }
         } else {
             if (nextState.player.air < nextState.player.maxAir) {
@@ -297,7 +314,10 @@ export const useGameLogic = (onGameOver: () => void) => {
             const nextPos = { x: discharge.position.x + discharge.direction.dx, y: discharge.position.y + discharge.direction.dy };
             
             if (nextPos.x === player.position.x && nextPos.y === player.position.y) {
-                const dmg = 2;
+                let dmg = 2;
+                if (player.class === 'CYBORG') dmg = 4; // Cyborg takes double electric dmg
+                if (player.class === 'SUBJECT_D') dmg = 0;
+
                 nextState.player.health = Math.max(0, nextState.player.health - dmg);
                 if(dmg > 0) addEffectInternal({ type: 'floating_text', position: player.position, text: `-${dmg}`, color: 'text-yellow-400', duration: 800 });
                 if (nextState.player.health === 0 && !causeOfDeath) causeOfDeath = "Elektrischer Schlag";
@@ -376,6 +396,8 @@ export const useGameLogic = (onGameOver: () => void) => {
                 const playerTotalDefense = (nextState.player.armor?.defense ?? 0) + nextState.player.defense;
                 let damage = Math.max(0, (enemy.attack + damageBonus) - playerTotalDefense);
                 
+                if (player.class === 'SUBJECT_D') damage = 0;
+
                 if (damage > 0) {
                     nextState.player.health = Math.max(0, nextState.player.health - damage);
                     addEffectInternal({ type: 'floating_text', position: player.position, text: `-${damage}`, color: 'text-red-500', duration: 800 });
@@ -583,6 +605,7 @@ export const useGameLogic = (onGameOver: () => void) => {
     let baseDefense = 0;
     let baseIntelligence = 0;
     let ammo = 20;
+    let credits = 0;
 
     switch (selectedClass) {
         case 'MARINE':
@@ -612,6 +635,52 @@ export const useGameLogic = (onGameOver: () => void) => {
             const drone = CONSUMABLES.find(c => c.name === "Aufklärungsdrohne");
             if (drone) initialInventory.push(drone);
             break;
+        case 'SCAVENGER':
+            ammo = 20;
+            credits = 500;
+            startWeapon = WEAPONS.find(w => w.name === "Brecheisen") || null;
+            const scanner = CONSUMABLES.find(c => c.name === "Scanner");
+            if (scanner) initialInventory.push(scanner);
+            break;
+        case 'CYBORG':
+            maxHp = 60;
+            baseDefense = 5;
+            startWeapon = WEAPONS.find(w => w.name === "Cyber-Arm V4") || null;
+            break;
+        case 'DEMOLITIONIST':
+            maxHp = 45;
+            ammo = 30;
+            startWeapon = WEAPONS.find(w => w.name === "Bolzenschießer") || null;
+            const nade = CONSUMABLES.find(c => c.name === "Splittergranate");
+            if (nade) {
+                initialInventory.push(nade);
+                initialInventory.push(nade);
+                initialInventory.push(nade);
+            }
+            const barrel = CONSUMABLES.find(c => c.name === "Tragbares Fass");
+            if (barrel) {
+                initialInventory.push(barrel);
+                initialInventory.push(barrel);
+            }
+            break;
+        case 'SUBJECT_D':
+            maxHp = 999;
+            baseStrength = 999;
+            baseDefense = 999;
+            baseIntelligence = 999;
+            ammo = 999;
+            credits = 99999;
+            // Add all items to inventory
+            ALL_ITEMS.forEach(item => initialInventory.push(item));
+            startWeapon = WEAPONS.find(w => w.id === 11) || null; // Godslayer
+            startArmor = ARMORS.find(a => a.id === 28) || null; // Singularity Plate
+            
+            for(let y = 0; y < MAP_HEIGHT; y++) {
+                for(let x = 0; x < MAP_WIDTH; x++) {
+                    if (map[y][x] !== CellType.WALL) revealed.add(`${x},${y}`);
+                }
+            }
+            break;
     }
 
     const newPlayerState = {
@@ -631,6 +700,7 @@ export const useGameLogic = (onGameOver: () => void) => {
         defense: baseDefense,
         intelligence: baseIntelligence,
         ammo: ammo,
+        credits: credits,
         maxAmmo: 50,
         quickSlots: [null, null] as [Consumable | null, Consumable | null],
     };
@@ -707,8 +777,10 @@ export const useGameLogic = (onGameOver: () => void) => {
          
          // Damage Calc
          const damageBonus = Math.random() < 0.2 ? 2 : 0; // Critical chance
-         const totalDamage = weapon.attack + damageBonus; // Ranged weapons rely mostly on weapon damage
+         let totalDamage = weapon.attack + damageBonus; // Ranged weapons rely mostly on weapon damage
          
+         if (player.class === 'SUBJECT_D') totalDamage += 9999;
+
          enemy.health -= totalDamage;
          enemy.justHit = true;
          enemy.aiState = 'chasing'; // Aggro
@@ -724,7 +796,7 @@ export const useGameLogic = (onGameOver: () => void) => {
          
          if (enemy.health <= 0) {
               newEnemies.splice(enemyIndex, 1);
-              const creditsGained = Math.floor(Math.random() * 15) + 5;
+              const creditsGained = (player.class === 'SCAVENGER' ? Math.floor(Math.random() * 25) + 10 : Math.floor(Math.random() * 15) + 5);
               newPlayer.credits += creditsGained;
               msg = `${enemy.name} eliminiert! ${creditsGained} Credits.`;
               
@@ -923,7 +995,9 @@ export const useGameLogic = (onGameOver: () => void) => {
                   }
               }
 
-              const totalAttack = weaponDamage + player.strength + player.attackBuff + damageBonus + classDamageBonus;
+              let totalAttack = weaponDamage + player.strength + player.attackBuff + damageBonus + classDamageBonus;
+              
+              if (player.class === 'SUBJECT_D') totalAttack += 9999;
 
               targetEnemy.health -= totalAttack;
               targetEnemy.justHit = true;
@@ -958,7 +1032,7 @@ export const useGameLogic = (onGameOver: () => void) => {
 
               if (targetEnemy.health <= 0) {
                   newEnemies.splice(enemyIndex, 1);
-                  const creditsGained = Math.floor(Math.random() * 15) + 5;
+                  const creditsGained = (player.class === 'SCAVENGER' ? Math.floor(Math.random() * 25) + 10 : Math.floor(Math.random() * 15) + 5);
                   newPlayerState.credits += creditsGained;
                   pushLog(`${targetEnemy.name} zerstört! ${creditsGained} Credits geborgen.`, 'victory');
                   
@@ -1339,7 +1413,7 @@ export const useGameLogic = (onGameOver: () => void) => {
                 if (foundItem.isUnique) newUniqueItemFound = true;
                 msg = `Gefunden: ${foundItem.name}!`;
             } else {
-                const creditsFound = Math.floor(Math.random() * 25) + 10;
+                const creditsFound = (player.class === 'SCAVENGER' ? Math.floor(Math.random() * 40) + 20 : Math.floor(Math.random() * 25) + 10);
                 newPlayer.credits += creditsFound;
                 msg = `Gefunden: ${creditsFound} Credits.`;
             }
@@ -1358,6 +1432,8 @@ export const useGameLogic = (onGameOver: () => void) => {
 
     if (interactionTarget.type === 'barrel') {
         const roll = Math.random();
+        // DEMOLITIONIST has lower chance to accidentally explode barrels or maybe better loot? 
+        // Let's keep it simple.
         if (roll < 0.15) {
              // Explosion!
              playSound('shoot');
@@ -1370,7 +1446,7 @@ export const useGameLogic = (onGameOver: () => void) => {
                  
                  // Check if player is adjacent (AoE logic roughly)
                  const dist = Math.sqrt(Math.pow(newPlayer.position.x - interactionTarget!.pos.x, 2) + Math.pow(newPlayer.position.y - interactionTarget!.pos.y, 2));
-                 if (dist <= 1.5) {
+                 if (dist <= 1.5 && newPlayer.class !== 'SUBJECT_D') {
                      newPlayer.health = Math.max(0, newPlayer.health - dmg);
                  }
                  
@@ -1471,6 +1547,7 @@ export const useGameLogic = (onGameOver: () => void) => {
         let hackingChance = 0.10; // Marine default
         if (gameState.player.class === 'TECHNICIAN') hackingChance = 0.45;
         if (gameState.player.class === 'SCOUT') hackingChance = 0.15;
+        if (gameState.player.class === 'SUBJECT_D') hackingChance = 1.0;
         
         // Add Intelligence Bonus (5% per point)
         hackingChance += (gameState.player.intelligence * 0.05);
@@ -1633,6 +1710,7 @@ export const useGameLogic = (onGameOver: () => void) => {
            let enemies = [...prevState.enemies];
            let revealedCells = prevState.revealedCells;
            let deployedDevices = [...prevState.deployedDevices];
+           let map = prevState.map.map(row => [...row]); // Clone map for updates
            let msg = "";
            const newVisualEffects = [...prevState.visualEffects];
 
@@ -1872,7 +1950,7 @@ export const useGameLogic = (onGameOver: () => void) => {
                  // 2. Player (Friendly Fire)
                  const pDist = Math.sqrt(Math.pow(newPlayer.position.x - explosionPos.x, 2) + Math.pow(newPlayer.position.y - explosionPos.y, 2));
                  let hitSelf = false;
-                 if (pDist <= explosionRadius) {
+                 if (pDist <= explosionRadius && newPlayer.class !== 'SUBJECT_D') {
                      newPlayer.health = Math.max(0, newPlayer.health - dmg);
                      hitSelf = true;
                      addEffectInternal({ type: 'floating_text', position: newPlayer.position, text: `-${dmg}`, color: 'text-red-500', duration: 800 });
@@ -1888,14 +1966,6 @@ export const useGameLogic = (onGameOver: () => void) => {
                      duration: 300
                  });
                  
-                 // Explosion Effect delayed to match projectile arrival
-                 setTimeout(() => {
-                     // We can't use addEffectInternal here because it's inside the reducer scope but executing later.
-                     // Instead, trigger visual via effect state in next render or just push both now with delayed start? 
-                     // The visual system logic processes based on startTime.
-                     // Let's just add it with a later startTime.
-                 }, 300);
-                 
                  addEffectInternal({
                     type: 'explosion',
                     char: '*',
@@ -1908,6 +1978,44 @@ export const useGameLogic = (onGameOver: () => void) => {
                  msg = hitSelf ? "Granate detoniert! Du wurdest getroffen." : "Granate detoniert.";
                  playSound('shoot');
                  break;
+                 
+             case 'SPAWN_BARREL':
+                 const bX = newPlayer.position.x + newPlayer.lastMoveDir.x;
+                 const bY = newPlayer.position.y + newPlayer.lastMoveDir.y;
+                 if (map[bY]?.[bX] !== CellType.WALL && map[bY]?.[bX] !== CellType.DOOR_CLOSED && map[bY]?.[bX] !== CellType.BARREL) {
+                     map[bY][bX] = CellType.BARREL;
+                     msg = "Explosives Fass platziert.";
+                     playSound('interact');
+                 } else {
+                     msg = "Kein Platz für Fass.";
+                 }
+                 break;
+                 
+             case 'SCAN_AREA':
+                 const scanRadius = consumable.value || 25;
+                 const scanRevealed = new Set(revealedCells);
+                 for(let y = 0; y < MAP_HEIGHT; y++) {
+                     for(let x = 0; x < MAP_WIDTH; x++) {
+                         if (map[y][x] !== CellType.WALL) {
+                             const dist = Math.sqrt(Math.pow(x - newPlayer.position.x, 2) + Math.pow(y - newPlayer.position.y, 2));
+                             if (dist <= scanRadius) {
+                                 scanRevealed.add(`${x},${y}`);
+                             }
+                         }
+                     }
+                 }
+                 revealedCells = scanRevealed;
+                 addEffectInternal({
+                    type: 'nova',
+                    char: '+',
+                    color: 'text-cyan-400 font-bold bg-cyan-900/10',
+                    position: newPlayer.position,
+                    radius: scanRadius / 2, // Visual effect smaller than actual reveal to not spam
+                    duration: 1200
+                 });
+                 msg = "Umgebungsscan abgeschlossen.";
+                 playSound('interact');
+                 break;
            }
            
            setTimeout(processTurn, 0);
@@ -1915,6 +2023,7 @@ export const useGameLogic = (onGameOver: () => void) => {
            return {
                ...prevState,
                player: newPlayer,
+               map: map,
                enemies: enemies,
                revealedCells: revealedCells,
                deployedDevices: deployedDevices,

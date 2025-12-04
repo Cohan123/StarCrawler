@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { CharacterClass } from '../types';
 
@@ -52,18 +53,19 @@ const ClassCard: React.FC<{
         className={`
             cursor-pointer
             flex flex-col items-center
-            border-2 p-4 rounded-lg w-full md:w-1/3
+            border-2 p-3 rounded-lg w-full
             transition-all duration-200
             backdrop-blur-sm
-            ${isSelected ? 'bg-green-900/40 border-green-400/80 scale-105 shadow-[0_0_15px_rgba(74,222,128,0.2)]' : 'bg-gray-900/40 border-gray-600/50 hover:bg-gray-800/60 hover:border-gray-400/60'}
+            min-h-[220px]
+            ${isSelected ? 'bg-green-900/40 border-green-400/80 scale-105 shadow-[0_0_15px_rgba(74,222,128,0.2)] z-10' : 'bg-gray-900/40 border-gray-600/50 hover:bg-gray-800/60 hover:border-gray-400/60'}
         `}
     >
-        <pre className={`text-sm mb-4 leading-none font-bold ${isSelected ? 'text-green-300' : 'text-gray-400'}`}>
+        <pre className={`text-sm mb-2 leading-none font-bold ${isSelected ? 'text-green-300' : 'text-gray-400'}`}>
             {icon}
         </pre>
-        <h3 className={`text-xl font-bold tracking-widest uppercase mb-2 ${isSelected ? 'text-white' : 'text-gray-300'}`}>{title}</h3>
-        <p className="text-gray-400 text-xs text-center mb-3 h-12">{desc}</p>
-        <div className={`text-xs font-bold uppercase tracking-wide border-t border-gray-600/50 pt-2 w-full text-center ${isSelected ? 'text-yellow-300' : 'text-gray-500'}`}>
+        <h3 className={`text-lg font-bold tracking-widest uppercase mb-1 ${isSelected ? 'text-white' : 'text-gray-300'}`}>{title}</h3>
+        <p className="text-gray-400 text-xs text-center mb-2 flex-grow">{desc}</p>
+        <div className={`text-[10px] font-bold uppercase tracking-wide border-t border-gray-600/50 pt-2 w-full text-center ${isSelected ? 'text-yellow-300' : 'text-gray-500'}`}>
             {bonus}
         </div>
     </div>
@@ -90,6 +92,79 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
     // User provided background image - Sci-Fi Space Theme
     const bgUrl = "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/2bcbc897-5739-4863-b322-e657d85f02fc/original=true,quality=90/1000080560.jpeg";
 
+    const CLASSES: { id: CharacterClass, title: string, icon: string, desc: string, bonus: string }[] = [
+        {
+            id: 'MARINE',
+            title: 'Marine',
+            icon: `
+  [O]
+ /|\\
+ / \\`,
+            desc: "Erprobter Kämpfer. Tödlich im Nahkampf.",
+            bonus: "+10 HP | Waffe | +Dmg"
+        },
+        {
+            id: 'TECHNICIAN',
+            title: 'Techniker',
+            icon: `
+ [=]
+ /|\\
+ / \\`,
+            desc: "System-Experte. Manipuliert Elektronik.",
+            bonus: "EMP | Hacking++"
+        },
+        {
+            id: 'SCOUT',
+            title: 'Scout',
+            icon: `
+ (o)
+ /|\\
+ / \\`,
+            desc: "Aufklärer. Sieht Gefahren früh.",
+            bonus: "Sicht++ | Map Lvl 1"
+        },
+        {
+            id: 'SCAVENGER',
+            title: 'Plünderer',
+            icon: `
+  $
+ /|\\
+ / \\`,
+            desc: "Händler und Schatzsucher.",
+            bonus: "+500 Credits | Scanner"
+        },
+        {
+            id: 'CYBORG',
+            title: 'Cyborg',
+            icon: `
+ [0]
+ /|\\
+ / \\`,
+            desc: "Halb Maschine. Immun gegen Umwelt.",
+            bonus: "Immun: Gift/Vakuum | Stark"
+        },
+        {
+            id: 'DEMOLITIONIST',
+            title: 'Sprengmeister',
+            icon: `
+  *
+ /|\\
+ / \\`,
+            desc: "Liebt Explosionen und Chaos.",
+            bonus: "3x Granate | 2x Fass"
+        },
+        {
+            id: 'SUBJECT_D',
+            title: 'Subjekt D',
+            icon: `
+ ???
+ /|\\
+ / \\`,
+            desc: "Testobjekt. Brecher der Realität.",
+            bonus: "GOD MODE"
+        },
+    ];
+
     return (
         <div className="absolute inset-0 bg-black flex flex-col items-center justify-center z-50 p-4 font-mono overflow-hidden">
              {/* Background Image with Overlay */}
@@ -105,16 +180,16 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
              <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/30 to-black" />
 
 
-            <div className="relative z-10 w-full max-w-5xl flex flex-col items-center justify-center space-y-8">
+            <div className="relative z-10 w-full max-w-6xl flex flex-col items-center justify-center space-y-4">
                 
                 {/* Title */}
                 <div className="text-center transform">
-                    <h1 className="text-5xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 via-green-600 to-green-900 drop-shadow-[0_4px_0_rgba(0,0,0,1)] tracking-tighter"
+                    <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-green-300 via-green-600 to-green-900 drop-shadow-[0_4px_0_rgba(0,0,0,1)] tracking-tighter"
                         style={{ fontFamily: 'Impact, sans-serif', textShadow: '0 0 20px rgba(74, 222, 128, 0.5)' }}>
                         STAR CRAWLER
                     </h1>
                     <div className="h-1 w-full bg-green-900 shadow-[0_0_10px_rgba(74,222,128,0.5)] my-2" />
-                    <h2 className="text-2xl md:text-4xl text-green-500 font-bold tracking-[0.3em] uppercase drop-shadow-lg">
+                    <h2 className="text-2xl md:text-3xl text-green-500 font-bold tracking-[0.3em] uppercase drop-shadow-lg">
                         The Lost Station
                     </h2>
                 </div>
@@ -125,17 +200,13 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
                     bg-black/40 backdrop-blur-md
                     border-4 border-gray-600/30 rounded-xl
                     shadow-[0_0_50px_rgba(0,0,0,0.5),inset_0_0_20px_rgba(0,0,0,0.2)]
-                    p-8 md:p-12
+                    p-6 md:p-8
                     flex flex-col items-center
                     relative
+                    max-h-[70vh]
+                    overflow-y-auto
+                    custom-scrollbar
                 ">
-                    {/* Panel Bolts */}
-                    <div className="absolute top-3 left-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
-                    <div className="absolute top-3 right-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
-                    <div className="absolute bottom-3 left-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
-                    <div className="absolute bottom-3 right-3 w-4 h-4 bg-gray-500/50 rounded-full border border-black/50 shadow-inner" />
-
-
                     {step === 'name' && (
                         <div className="w-full flex flex-col items-center space-y-6 animate-fadeIn">
                             <label htmlFor="playerName" className="text-xl text-green-400 font-bold uppercase tracking-widest text-shadow">Identifikation</label>
@@ -177,49 +248,24 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
                     )}
 
                     {step === 'class' && (
-                         <div className="w-full flex flex-col items-center space-y-6 animate-fadeIn">
-                            <h3 className="text-xl text-green-400 font-bold uppercase tracking-widest text-shadow mb-4">Wähle Spezialisierung</h3>
+                         <div className="w-full flex flex-col items-center space-y-4 animate-fadeIn">
+                            <h3 className="text-xl text-green-400 font-bold uppercase tracking-widest text-shadow">Wähle Spezialisierung</h3>
                             
-                            <div className="flex flex-col md:flex-row gap-4 w-full">
-                                <ClassCard 
-                                    title="Marine" 
-                                    icon={`
-  [O]
- /|\\
- / \\
-`} 
-                                    desc="Erprobter Kämpfer. Tödlich im Nahkampf."
-                                    bonus="+10 HP | Startet mit Waffe | +Kampfschaden"
-                                    isSelected={selectedClass === 'MARINE'}
-                                    onClick={() => setSelectedClass('MARINE')}
-                                />
-                                <ClassCard 
-                                    title="Techniker" 
-                                    icon={`
- [=]
- /|\\
- / \\
-`} 
-                                    desc="System-Experte. Manipuliert Stationselektronik."
-                                    bonus="Startet mit EMP | Hacking deckt Karte auf"
-                                    isSelected={selectedClass === 'TECHNICIAN'}
-                                    onClick={() => setSelectedClass('TECHNICIAN')}
-                                />
-                                <ClassCard 
-                                    title="Scout" 
-                                    icon={`
- (o)
- /|\\
- / \\
-`} 
-                                    desc="Aufklärer. Sieht Gefahren, bevor sie ihn sehen."
-                                    bonus="+Sichtweite | Startet mit Map (Ebene 1)"
-                                    isSelected={selectedClass === 'SCOUT'}
-                                    onClick={() => setSelectedClass('SCOUT')}
-                                />
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                                {CLASSES.map(cls => (
+                                    <ClassCard 
+                                        key={cls.id}
+                                        title={cls.title}
+                                        icon={cls.icon}
+                                        desc={cls.desc}
+                                        bonus={cls.bonus}
+                                        isSelected={selectedClass === cls.id}
+                                        onClick={() => setSelectedClass(cls.id)}
+                                    />
+                                ))}
                             </div>
 
-                            <div className="flex flex-col w-full items-center gap-4 mt-8">
+                            <div className="flex flex-col w-full items-center gap-4 mt-4">
                                 <MenuButton onClick={() => setStep('name')} primary>Weiter</MenuButton>
                                 <button 
                                     onClick={() => setStep('menu')} 
@@ -249,7 +295,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
             </div>
             
              <div className="absolute bottom-4 text-center w-full pointer-events-none">
-                <p className="text-gray-500 text-xs font-mono drop-shadow-md">SYSTEM V0.2.2 // CONNECTED</p>
+                <p className="text-gray-500 text-xs font-mono drop-shadow-md">SYSTEM V0.2.3 // CONNECTED</p>
              </div>
         </div>
     );

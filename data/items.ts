@@ -10,6 +10,9 @@ export const WEAPONS: Weapon[] = [
     { id: 4, name: "Vibro-Klinge", attack: 14, cost: 450, range: 1, ammoCost: 0, description: "Eine Klinge, die mit hoher Frequenz vibriert und so molekulare Bindungen trennt." },
     { id: 9, name: "Nullpunkt-Klinge", attack: 65, cost: 5500, range: 1, ammoCost: 0, description: "Nutzt exotische Materie, um alles in ihrem Weg zu desintegrieren. Experimentell." },
     { id: 11, name: "Göttermörder", attack: 130, cost: 15000, range: 1, ammoCost: 0, description: "Eine uralte Waffe unbekannter Herkunft. Sie pulsiert mit dunkler Energie.", isUnique: true },
+    
+    // Cyborg Weapon
+    { id: 90, name: "Cyber-Arm V4", attack: 8, cost: 0, range: 1, ammoCost: 0, description: "Hydraulisch verstärkte Gliedmaßen. Zerschmettert Beton." },
 
     // Ranged Weapons (Range > 1, Ammo > 0)
     { id: 13, name: "Bolzenschießer", attack: 2, cost: 120, range: 6, ammoCost: 1, meleeSidearmDamage: 2, description: "Feuert Metallbolzen mit hoher Geschwindigkeit. Einfach, aber zuverlässig." },
@@ -48,6 +51,8 @@ export const CONSUMABLES: Consumable[] = [
     { id: 301, name: "Selbstschussanlage", cost: 400, effect: 'SPAWN_TURRET', value: 5, duration: 5, description: "Stationäres Geschütz. Feuert automatisch auf nahe Feinde (5 Dmg)." },
     { id: 302, name: "Schildgenerator", cost: 350, effect: 'SPAWN_SHIELD', value: 0, duration: 4, description: "Erzeugt eine Energiebarriere, die den Durchgang für 4 Runden blockiert." },
     { id: 303, name: "Splittergranate", cost: 120, effect: 'EXPLOSIVE_GRENADE', value: 10, description: "Explodiert beim Aufprall und verursacht Flächenschaden (10 Dmg). Vorsicht!" },
+    { id: 304, name: "Tragbares Fass", cost: 80, effect: 'SPAWN_BARREL', value: 0, description: "Ein explosives Fass zum Platzieren. Perfekt für Hinterhalte." },
+    { id: 305, name: "Scanner", cost: 250, effect: 'SCAN_AREA', value: 25, description: "Hochleistungs-Scanner. Deckt einen großen Bereich der Karte auf." },
 ];
 
 export const ALL_ITEMS: AnyItem[] = [...WEAPONS, ...ARMORS, ...CONSUMABLES].sort((a, b) => a.cost - b.cost);
@@ -82,7 +87,7 @@ export const getLootItem = (depth: number, uniqueItemFound: boolean = false): An
     }
 
     // Exclude unique items from standard pool
-    const equipment = [...WEAPONS, ...ARMORS].filter(i => !i.isUnique);
+    const equipment = [...WEAPONS, ...ARMORS].filter(i => !i.isUnique && i.id !== 90); // ID 90 is Cyber-Arm (Class exclusive)
     const totalItems = equipment.length;
     
     const maxIndex = Math.min(totalItems, 5 + Math.ceil(depth * 1.3));
