@@ -16,12 +16,12 @@ import { HazardZoneType, CharacterClass } from './types';
 
 type GameView = 'start' | 'game' | 'wiki' | 'highscore' | 'manual';
 
-// Reliable direct MP3 links
-const MENU_MUSIC = "https://cdn.discordapp.com/attachments/1445125760552796304/1445125899027742834/Hetzjagd.mp3?ex=692f35df&is=692de45f&hm=6e20b20ec14b4a1b01362cbfb509b08b56b723c8efcd93dc8255c9537df196d9&";
+// Reliable direct MP3 links (Archive.org)
+const MENU_MUSIC = "https://archive.org/download/nineinchnails_ghosts_I_IV/34%20Ghosts%20IV.mp3";
 const GAME_MUSIC = [
-    "https://cdn.discordapp.com/attachments/1445125760552796304/1445770157988253758/Vakuum.mp3?ex=69318de2&is=69303c62&hm=9d8d143483689f45a3010b7e0c968bef1183889ee73fee72b1b722f6f3b5f924&",
-    "https://cdn.discordapp.com/attachments/1445125760552796304/1445127760652796035/Eisige_Leere.mp3?ex=692f379b&is=692de61b&hm=8a57b1c91647c5e03a84c72af2410bea86c501cf6f283cb0c9116bd6a7a02a48&",
-    "https://cdn.discordapp.com/attachments/1445125760552796304/1445127761286004936/Starre_Angst.mp3?ex=692f379b&is=692de61b&hm=473e0465ac90facacc86d3e98bd758158ffab549c5b9f6a69a94e4b27409fc53&"
+    "https://archive.org/download/nineinchnails_ghosts_I_IV/01%20Ghosts%20I.mp3",
+    "https://archive.org/download/nineinchnails_ghosts_I_IV/04%20Ghosts%20I.mp3",
+    "https://archive.org/download/nineinchnails_ghosts_I_IV/16%20Ghosts%20II.mp3"
 ];
 
 function App() {
