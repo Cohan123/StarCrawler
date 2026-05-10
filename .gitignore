@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+migrated_prompt_history
+Bilder/Chraktere/*/
 
 # Editor directories and files
 .vscode/*

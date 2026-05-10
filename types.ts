@@ -206,6 +206,7 @@ export interface GameState {
   playerHurt: boolean;
   hoverInfo: string | null; 
   uniqueItemFound: boolean; // Track unique weapon
+  causeOfDeath?: string; // New
 }
 
 export type CachedLevelState = Omit<GameState, 'player' | 'logs' | 'messageHistory' | 'visibleCells' | 'isGameOver' | 'isVictory' | 'isMinimapOpen' | 'isLevelUpScreenOpen' | 'playerName' | 'discharges' | 'hazardZone' | 'isShopOpen' | 'playerHurt' | 'hoverInfo' | 'visualEffects' | 'deployedDevices' | 'uniqueItemFound'>;

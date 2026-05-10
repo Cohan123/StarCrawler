@@ -16,18 +16,30 @@ import { HazardZoneType, CharacterClass } from './types';
 
 type GameView = 'start' | 'game' | 'wiki' | 'highscore' | 'manual';
 
-// Reliable direct MP3 links (Archive.org)
-const MENU_MUSIC = "https://archive.org/download/nineinchnails_ghosts_I_IV/34%20Ghosts%20IV.mp3";
+const MENU_MUSIC = new URL('./Musik/Main.mp3', import.meta.url).href;
+
 const GAME_MUSIC = [
-    "https://archive.org/download/nineinchnails_ghosts_I_IV/01%20Ghosts%20I.mp3",
-    "https://archive.org/download/nineinchnails_ghosts_I_IV/04%20Ghosts%20I.mp3",
-    "https://archive.org/download/nineinchnails_ghosts_I_IV/16%20Ghosts%20II.mp3"
+    new URL('./Musik/Track01.mp3', import.meta.url).href,
+    new URL('./Musik/Track02.mp3', import.meta.url).href,
+    new URL('./Musik/Track03.mp3', import.meta.url).href
 ];
 
 function App() {
   const [gameView, setGameView] = useState<GameView>('start');
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isMutedRef = useRef(false);
+
+  const getRandomGameTrackIndex = (previousIndex?: number) => {
+    if (GAME_MUSIC.length <= 1) return 0;
+
+    let nextIndex = Math.floor(Math.random() * GAME_MUSIC.length);
+    while (nextIndex === previousIndex) {
+        nextIndex = Math.floor(Math.random() * GAME_MUSIC.length);
+    }
+    return nextIndex;
+  };
   
   const handleGameOver = () => {
     setTimeout(() => {
@@ -39,9 +51,13 @@ function App() {
 
   const startGame = (playerName: string, selectedClass: CharacterClass) => {
     gameLogic.initializeGame(playerName, selectedClass);
-    setCurrentTrackIndex(0); // Reset playlist
+    setCurrentTrackIndex(getRandomGameTrackIndex());
     setGameView('game');
   };
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
   // Background Music Logic
   useEffect(() => {
@@ -52,6 +68,8 @@ function App() {
     const audio = audioRef.current;
 
     const playMusic = async (url: string, loop: boolean) => {
+        if (isMutedRef.current) return;
+
         try {
             // Only update src if it's different to prevent restarting same track
             if (audio.src !== url) {
@@ -66,10 +84,11 @@ function App() {
             console.log("Audio play failed (Autoplay policy or error):", err);
             // Add a one-time listener to resume audio on interaction
             const resume = () => {
-                audio.play().catch(e => console.error("Resume failed:", e));
                 window.removeEventListener('click', resume);
                 window.removeEventListener('keydown', resume);
                 window.removeEventListener('touchstart', resume);
+                if (isMutedRef.current) return;
+                audio.play().catch(e => console.error("Resume failed:", e));
             };
             window.addEventListener('click', resume);
             window.addEventListener('keydown', resume);
@@ -77,10 +96,16 @@ function App() {
         }
     };
 
+    if (isMuted) {
+        audio.pause();
+        audio.onended = null;
+        return;
+    }
+
     if (gameView === 'game') {
         // Game Playlist Mode
         audio.onended = () => {
-            setCurrentTrackIndex((prev) => (prev + 1) % GAME_MUSIC.length);
+            setCurrentTrackIndex((prev) => getRandomGameTrackIndex(prev));
         };
         playMusic(GAME_MUSIC[currentTrackIndex], false);
     } else {
@@ -89,7 +114,7 @@ function App() {
         playMusic(MENU_MUSIC, true);
     }
 
-  }, [gameView, currentTrackIndex]);
+  }, [gameView, currentTrackIndex, isMuted]);
 
 
   const getHazardOverlayClass = (hazardZone: HazardZoneType) => {
@@ -105,6 +130,25 @@ function App() {
 
   return (
       <>
+       <button
+        type="button"
+        onClick={() => setIsMuted((muted) => !muted)}
+        aria-label={isMuted ? 'Ton einschalten' : 'Stumm schalten'}
+        title={isMuted ? 'Ton einschalten' : 'Stumm schalten'}
+        className={`
+            fixed bottom-4 right-4 z-[100]
+            w-12 h-12 rounded-full border-2
+            flex items-center justify-center
+            bg-black/80 backdrop-blur-sm
+            shadow-[0_0_18px_rgba(0,0,0,0.55)]
+            transition-all duration-200
+            hover:scale-105 active:scale-95
+            ${isMuted ? 'border-red-500 text-red-300 hover:bg-red-950/80' : 'border-green-500 text-green-300 hover:bg-green-950/80'}
+        `}
+       >
+        <span className="text-xl leading-none" aria-hidden="true">{isMuted ? '🔇' : '🔊'}</span>
+       </button>
+
        {(() => {
         switch (gameView) {
         case 'start':

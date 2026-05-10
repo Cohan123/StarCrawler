@@ -4,116 +4,25 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, CellType, Position, LogEntry, Enemy, EnemyType, CachedLevelState, Discharge, HazardZoneType, GroundItem, AnyItem, Weapon, Armor, MessageType, GameMessage, Consumable, CharacterClass, VisualEffect, DeployedDevice } from '../types';
 import { generateMap } from '../utils/mapGenerator';
 import { generateLogEntry } from '../services/geminiService';
-import { calculateFov } from '../utils/fov';
 import { playSound } from '../utils/audio';
 import { saveHighscore } from '../utils/highscore';
 import { getLootItem, WEAPONS, CONSUMABLES, ARMORS, ALL_ITEMS } from '../data/items';
 import { findPath } from '../utils/pathfinding';
 import { getTileDescription } from '../utils/descriptions';
 import { getFlavorText } from '../utils/flavorText';
-
-const MAP_WIDTH = 80;
-const MAP_HEIGHT = 35;
-const TERMINAL_COUNT = 5;
-const BASE_FOV_RADIUS = 8;
-
-const initialState: GameState = {
-  map: [],
-  player: {
-    name: '',
-    class: 'MARINE', 
-    position: { x: -1, y: -1 },
-    lastMoveDir: { x: 0, y: 1 }, // Default facing down
-    health: 40,
-    maxHealth: 40,
-    // Stats
-    level: 1,
-    xp: 0,
-    maxXp: 100,
-    strength: 0,
-    defense: 0,
-    intelligence: 0,
-    
-    ammo: 20,
-    maxAmmo: 50,
-    
-    radioactivity: 0,
-    maxRadioactivity: 10,
-    air: 25,
-    maxAir: 25,
-    credits: 0,
-    weapon: null,
-    armor: null,
-    inventory: [],
-    quickSlots: [null, null],
-    attackBuff: 0,
-    buffTurns: 0,
-  },
-  logs: [],
-  messageHistory: [],
-  terminals: [],
-  healingTerminals: [],
-  depth: 1,
-  visibleCells: new Set<string>(),
-  revealedCells: new Set<string>(),
-  enemies: [],
-  isGameOver: false,
-  isVictory: false,
-  isMinimapOpen: false,
-  isLevelUpScreenOpen: false,
-  playerName: '',
-  discharges: [],
-  deployedDevices: [],
-  visualEffects: [],
-  hazardZone: 'none',
-  isShopOpen: false,
-  groundItems: [],
-  playerHurt: false,
-  hoverInfo: null,
-  uniqueItemFound: false, // Initial state
-};
+import { initialState } from '../data/initialState';
+import { MAP_HEIGHT, MAP_WIDTH, TERMINAL_COUNT } from '../utils/gameConfig';
+import { computeVisibility } from '../utils/visibility';
 
 const rollDice = () => {
     return Math.floor(Math.random() * 6) + 1;
-};
-
-// Helper function to calculate visibility (Pure function)
-const computeVisibility = (currentMap: CellType[][], currentPlayer: {position: Position, class: CharacterClass}, currentRevealed: Set<string>) => {
-    const playerCell = (currentMap[currentPlayer.position.y] && currentMap[currentPlayer.position.y][currentPlayer.position.x]) ? currentMap[currentPlayer.position.y][currentPlayer.position.x] : CellType.FLOOR;
-    
-    const classBonus = currentPlayer.class === 'SCOUT' ? 2 : 0;
-    const currentFovRadius = (playerCell === CellType.RADIATION ? 2 : BASE_FOV_RADIUS + classBonus);
-
-    const visibleFromPlayer = calculateFov(currentMap, currentPlayer.position, currentFovRadius);
-    const allVisible = new Set(visibleFromPlayer);
-
-    for (let y = 0; y < currentMap.length; y++) {
-      for (let x = 0; x < currentMap[y].length; x++) {
-        const cell = currentMap[y][x];
-        let radius = 0;
-        if (cell === CellType.LIGHT_SOURCE) {
-          radius = 2;
-        } else if (cell === CellType.TERMINAL_OFF || cell === CellType.TERMINAL_ON) {
-          radius = 1;
-        }
-        
-        if (radius > 0 && visibleFromPlayer.has(`${x},${y}`)) {
-          const visibleFromLight = calculateFov(currentMap, { x, y }, radius);
-          visibleFromLight.forEach(cellKey => allVisible.add(cellKey));
-        }
-      }
-    }
-    
-    const newRevealed = new Set(currentRevealed);
-    allVisible.forEach(cell => newRevealed.add(cell));
-    
-    return { visibleCells: allVisible, revealedCells: newRevealed };
 };
 
 export const useGameLogic = (onGameOver: () => void) => {
   const [gameState, setGameState] = useState<GameState>(initialState);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [levelCache, setLevelCache] = useState<Map<number, CachedLevelState>>(new Map());
+  const highscoreSavedRef = useRef(false);
   
   const isWalkingRef = useRef(false);
   const stopWalkingRef = useRef(false);
@@ -498,18 +407,12 @@ export const useGameLogic = (onGameOver: () => void) => {
         }
 
         if (nextState.player.health <= 0 && !nextState.isGameOver) {
-             saveHighscore({ 
-                name: prevState.playerName, 
-                score: prevState.player.credits, 
-                depth: prevState.depth,
-                date: new Date().toISOString(),
-                killedBy: causeOfDeath || "Unbekannt"
-            });
              setTimeout(onGameOver, 1000);
              return {
                  ...nextState,
                  messageHistory: [...nextState.messageHistory, { id: Date.now(), text: "KRITISCHES SYSTEMVERSAGEN. LEBENSZEICHEN VERLOREN.", type: 'warning', timestamp: Date.now() }],
                  isGameOver: true,
+                 causeOfDeath: causeOfDeath || "Unbekannt"
              };
         }
         
@@ -590,6 +493,7 @@ export const useGameLogic = (onGameOver: () => void) => {
 
 
   const initializeGame = useCallback((playerName: string, selectedClass: CharacterClass) => {
+    highscoreSavedRef.current = false;
     isWalkingRef.current = false;
     stopWalkingRef.current = false;
     const { map, playerStart, terminals, healingTerminals, enemies } = generateMap(MAP_WIDTH, MAP_HEIGHT, 30, 6, 12, TERMINAL_COUNT, 1);
@@ -720,6 +624,20 @@ export const useGameLogic = (onGameOver: () => void) => {
     setLevelCache(new Map());
     updateVisibility(map, { position: playerStart, class: selectedClass }, revealed);
   }, [updateVisibility]);
+
+  // Handle Highscore Saving
+  useEffect(() => {
+    if (gameState.isGameOver && !highscoreSavedRef.current) {
+        highscoreSavedRef.current = true;
+        saveHighscore({
+            name: gameState.playerName,
+            score: gameState.player.credits + (gameState.isVictory ? 1000 : 0),
+            depth: gameState.depth,
+            date: new Date().toISOString(),
+            killedBy: gameState.causeOfDeath || "Unbekannt"
+        });
+    }
+  }, [gameState.isGameOver, gameState.isVictory, gameState.playerName, gameState.player.credits, gameState.depth, gameState.causeOfDeath]);
 
   const applyLevelUp = useCallback((type: 'HP' | 'STR' | 'DEF' | 'INT') => {
       setGameState(prevState => {
@@ -1176,18 +1094,13 @@ export const useGameLogic = (onGameOver: () => void) => {
           return prevState;
         case CellType.SHUTTLE:
            stopWalkingRef.current = true;
-           saveHighscore({ 
-                name: prevState.playerName, 
-                score: prevState.player.credits + 1000,
-                depth: prevState.depth,
-                date: new Date().toISOString(),
-                killedBy: "Mission Erfolgreich"
-            });
            playSound('interact');
+           setTimeout(onGameOver, 1000);
            return {
                ...prevState,
                isGameOver: true,
                isVictory: true,
+               causeOfDeath: "Mission Erfolgreich",
                messageHistory: [...currentMessages, { id: Date.now(), text: "Shuttle aktiviert. Mission erfolgreich.", type: 'victory', timestamp: Date.now() }],
                player: { ...prevState.player, position: newPlayerPos },
            }; 
