@@ -2138,10 +2138,30 @@ export const useGameLogic = (onGameOver: () => void) => {
     };
   }, [movePlayer, interact, gameState, levelCache, closeShop, toggleMinimap, walkPath.length, fireNearestEnemy, useQuickSlot]);
 
+  const loadGame = useCallback((savedGameState: GameState, savedLevelCache: Map<number, CachedLevelState>) => {
+      highscoreSavedRef.current = false;
+      isWalkingRef.current = false;
+      stopWalkingRef.current = false;
+      setWalkPath([]);
+      setLevelCache(savedLevelCache);
+      setGameState({
+          ...savedGameState,
+          isGameOver: false,
+          isVictory: false,
+          isMinimapOpen: false,
+          isShopOpen: false,
+          isLevelUpScreenOpen: false,
+          playerHurt: false,
+          hoverInfo: null,
+          visualEffects: [],
+      });
+  }, []);
+
   return { 
       gameState, 
       isLoading, 
       initializeGame, 
+      loadGame,
       levelCache, 
       closeShop, 
       buyItem, 

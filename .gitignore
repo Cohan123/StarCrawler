@@ -13,6 +13,8 @@ dist-ssr
 *.local
 migrated_prompt_history
 Bilder/Chraktere/*/
+!Bilder/Chraktere/Portraits/
+!Bilder/Chraktere/Portraits/*.png
 
 # Editor directories and files
 .vscode/*

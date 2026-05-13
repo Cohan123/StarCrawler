@@ -13,6 +13,7 @@ import MobileControls from './components/MobileControls';
 import LevelUpScreen from './components/LevelUpScreen';
 import ManualScreen from './components/ManualScreen'; // New
 import { HazardZoneType, CharacterClass } from './types';
+import { deleteSavedGame, hasSavedGame, loadSavedGame, saveGame } from './utils/saveGame';
 
 type GameView = 'start' | 'game' | 'wiki' | 'highscore' | 'manual';
 
@@ -28,6 +29,7 @@ function App() {
   const [gameView, setGameView] = useState<GameView>('start');
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [hasStoredSave, setHasStoredSave] = useState(() => hasSavedGame());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMutedRef = useRef(false);
 
@@ -42,6 +44,8 @@ function App() {
   };
   
   const handleGameOver = () => {
+    deleteSavedGame();
+    setHasStoredSave(false);
     setTimeout(() => {
         setGameView('start');
     }, 4000); 
@@ -50,9 +54,29 @@ function App() {
   const gameLogic = useGameLogic(handleGameOver);
 
   const startGame = (playerName: string, selectedClass: CharacterClass) => {
+    deleteSavedGame();
+    setHasStoredSave(false);
     gameLogic.initializeGame(playerName, selectedClass);
     setCurrentTrackIndex(getRandomGameTrackIndex());
     setGameView('game');
+  };
+
+  const continueGame = () => {
+    const savedGame = loadSavedGame();
+    if (!savedGame) {
+        setHasStoredSave(false);
+        return;
+    }
+
+    gameLogic.loadGame(savedGame.gameState, savedGame.levelCache);
+    setCurrentTrackIndex(getRandomGameTrackIndex());
+    setGameView('game');
+  };
+
+  const saveAndExitGame = () => {
+    saveGame(gameLogic.gameState, gameLogic.levelCache);
+    setHasStoredSave(true);
+    setGameView('start');
   };
 
   useEffect(() => {
@@ -154,6 +178,8 @@ function App() {
         case 'start':
             return <StartScreen 
                         onStart={startGame} 
+                        onContinue={continueGame}
+                        hasSavedGame={hasStoredSave}
                         onWiki={() => setGameView('wiki')} 
                         onHighscore={() => setGameView('highscore')} 
                         onManual={() => setGameView('manual')}
@@ -173,35 +199,53 @@ function App() {
                             <h1 className="text-lg text-green-500 tracking-widest font-bold">STAR CRAWLER</h1>
                             <span className="text-xs text-gray-500 hidden sm:inline">| SEKTOR {gameLogic.gameState.depth} | {gameLogic.gameState.playerName} | LVL {gameLogic.gameState.player.level}</span>
                          </div>
-                         <div className="text-xs text-gray-600">SYS.VER.0.3</div>
+                         <div className="flex items-center gap-3">
+                            {!gameLogic.gameState.isGameOver && (
+                                <button
+                                    type="button"
+                                    onClick={saveAndExitGame}
+                                    className="px-3 py-1 border border-orange-700/70 bg-orange-950/30 text-orange-300 text-xs uppercase tracking-widest hover:bg-orange-900/60 hover:text-orange-100 transition-colors"
+                                >
+                                    Speichern und Beenden
+                                </button>
+                            )}
+                            <div className="text-xs text-gray-600">SYS.VER.0.3</div>
+                         </div>
                     </header>
 
-                    {/* Main Content Area: Game + Sidebar */}
+                    {/* Main Content Area: Game/Log + Sidebar */}
                     <div className="flex-grow flex min-h-0 relative">
                         {/* Hazard Overlay */}
                         <div className={`absolute inset-0 pointer-events-none z-10 transition-all duration-500 ${getHazardOverlayClass(gameLogic.gameState.hazardZone)}`} />
                         
-                        {/* Game Board */}
+                        {/* Left Play Area */}
                         <div className="flex-grow relative flex flex-col min-w-0">
-                             <GameScreen 
-                                map={gameLogic.gameState.map} 
-                                playerPos={gameLogic.gameState.player.position}
-                                visibleCells={gameLogic.gameState.visibleCells}
-                                revealedCells={gameLogic.gameState.revealedCells}
-                                enemies={gameLogic.gameState.enemies}
-                                discharges={gameLogic.gameState.discharges}
-                                groundItems={gameLogic.gameState.groundItems}
-                                playerHurt={gameLogic.gameState.playerHurt}
-                                hoverInfo={gameLogic.gameState.hoverInfo}
-                                onTileClick={gameLogic.startWalking}
-                                onTileHover={gameLogic.hoverTile}
-                                visualEffects={gameLogic.gameState.visualEffects}
-                                deployedDevices={gameLogic.gameState.deployedDevices}
-                                />
+                            <div className="flex-grow relative min-h-0">
+                                <GameScreen 
+                                    map={gameLogic.gameState.map} 
+                                    playerPos={gameLogic.gameState.player.position}
+                                    visibleCells={gameLogic.gameState.visibleCells}
+                                    revealedCells={gameLogic.gameState.revealedCells}
+                                    enemies={gameLogic.gameState.enemies}
+                                    discharges={gameLogic.gameState.discharges}
+                                    groundItems={gameLogic.gameState.groundItems}
+                                    playerHurt={gameLogic.gameState.playerHurt}
+                                    hoverInfo={gameLogic.gameState.hoverInfo}
+                                    onTileClick={gameLogic.startWalking}
+                                    onTileHover={gameLogic.hoverTile}
+                                    visualEffects={gameLogic.gameState.visualEffects}
+                                    deployedDevices={gameLogic.gameState.deployedDevices}
+                                    />
+                            </div>
+
+                            {/* Bottom Log Panel */}
+                            <div className="flex-shrink-0 h-48 border-t border-gray-800 z-20">
+                                <MessageLog messages={gameLogic.gameState.messageHistory} />
+                            </div>
                         </div>
 
                         {/* Right Sidebar */}
-                        <div className="flex-shrink-0 w-64 border-l border-gray-800 hidden lg:block h-full">
+                        <div className="flex-shrink-0 w-72 border-l border-gray-800 hidden lg:block h-full">
                             <SidePanel 
                                 player={gameLogic.gameState.player} 
                                 depth={gameLogic.gameState.depth}
@@ -211,11 +255,6 @@ function App() {
                                 playerPos={gameLogic.gameState.player.position}
                             />
                         </div>
-                    </div>
-
-                    {/* Bottom Log Panel */}
-                    <div className="flex-shrink-0 h-48 border-t border-gray-800 z-20">
-                        <MessageLog messages={gameLogic.gameState.messageHistory} />
                     </div>
 
                     {/* Modals & Overlays */}
@@ -292,7 +331,7 @@ function App() {
                  </div>
             );
         default:
-             return <StartScreen onStart={startGame} onWiki={() => setGameView('wiki')} onHighscore={() => setGameView('highscore')} onManual={() => setGameView('manual')} />;
+             return <StartScreen onStart={startGame} onContinue={continueGame} hasSavedGame={hasStoredSave} onWiki={() => setGameView('wiki')} onHighscore={() => setGameView('highscore')} onManual={() => setGameView('manual')} />;
     }
     })()}
       </>

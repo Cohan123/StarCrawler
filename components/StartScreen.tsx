@@ -3,6 +3,8 @@ import { CharacterClass } from '../types';
 
 interface StartScreenProps {
   onStart: (playerName: string, selectedClass: CharacterClass) => void;
+  onContinue: () => void;
+  hasSavedGame: boolean;
   onWiki: () => void;
   onHighscore: () => void;
   onManual: () => void;
@@ -16,13 +18,13 @@ interface ClassDefinition {
 }
 
 const characterImages: Record<CharacterClass, string> = {
-    MARINE: new URL('../Bilder/Chraktere/Marine.png', import.meta.url).href,
-    TECHNICIAN: new URL('../Bilder/Chraktere/Techniker.png', import.meta.url).href,
-    SCOUT: new URL('../Bilder/Chraktere/Scout.png', import.meta.url).href,
-    SCAVENGER: new URL('../Bilder/Chraktere/Schrotter.png', import.meta.url).href,
-    CYBORG: new URL('../Bilder/Chraktere/Cyborg.png', import.meta.url).href,
-    DEMOLITIONIST: new URL('../Bilder/Chraktere/Sprengmeister.png', import.meta.url).href,
-    SUBJECT_D: new URL('../Bilder/Chraktere/SubjectD.png', import.meta.url).href,
+    MARINE: new URL('../Bilder/Chraktere/Portraits/P_Marine.png', import.meta.url).href,
+    TECHNICIAN: new URL('../Bilder/Chraktere/Portraits/P_Techniker.png', import.meta.url).href,
+    SCOUT: new URL('../Bilder/Chraktere/Portraits/P_Scout.png', import.meta.url).href,
+    SCAVENGER: new URL('../Bilder/Chraktere/Portraits/P_Schrotter.png', import.meta.url).href,
+    CYBORG: new URL('../Bilder/Chraktere/Portraits/P_Cyborg.png', import.meta.url).href,
+    DEMOLITIONIST: new URL('../Bilder/Chraktere/Portraits/P_Sprengmeister.png', import.meta.url).href,
+    SUBJECT_D: new URL('../Bilder/Chraktere/Portraits/P_SubjectD.png', import.meta.url).href,
 };
 
 const CLASSES: ClassDefinition[] = [
@@ -121,12 +123,12 @@ const ClassCard: React.FC<{
             ${isSelected ? 'border-green-400 text-white shadow-[0_0_20px_rgba(34,197,94,0.45),inset_0_0_24px_rgba(0,0,0,0.7)]' : 'border-gray-600/70 text-gray-300 hover:border-gray-300/80 hover:bg-gray-900/80'}
         `}
     >
-        <div className="relative w-full h-36 sm:h-40 mb-2 overflow-hidden">
+        <div className="relative w-full h-36 sm:h-40 mb-2 overflow-hidden border border-gray-800 bg-black/40">
             <img
                 src={characterImages[cls.id]}
                 alt={cls.title}
                 draggable={false}
-                className="absolute inset-0 h-full w-full object-contain object-bottom drop-shadow-[0_12px_18px_rgba(0,0,0,0.85)] transition-transform duration-200 group-hover:scale-[1.03]"
+                className="absolute inset-0 h-full w-full object-cover object-center drop-shadow-[0_12px_18px_rgba(0,0,0,0.85)] transition-transform duration-200 group-hover:scale-[1.03]"
             />
             <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black to-transparent" />
         </div>
@@ -143,7 +145,7 @@ const ClassCard: React.FC<{
     </button>
 );
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore, onManual }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onStart, onContinue, hasSavedGame, onWiki, onHighscore, onManual }) => {
     const [step, setStep] = useState<'menu' | 'class' | 'name'>('menu');
     const [playerName, setPlayerName] = useState('');
     const [selectedClass, setSelectedClass] = useState<CharacterClass>('MARINE');
@@ -277,6 +279,11 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onWiki, onHighscore,
                             <div className="w-full flex justify-center mb-2">
                                 <MenuButton onClick={() => setStep('class')} primary>Neues Spiel</MenuButton>
                             </div>
+                            {hasSavedGame && (
+                                <div className="w-full flex justify-center">
+                                    <MenuButton onClick={onContinue}>Spiel fortsetzen</MenuButton>
+                                </div>
+                            )}
                             <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
                                 <MenuButton onClick={onWiki}>Wiki</MenuButton>
                                 <MenuButton onClick={onHighscore}>Highscore</MenuButton>
