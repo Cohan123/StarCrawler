@@ -54,18 +54,20 @@ jobs:
       - name: Repository-Beschreibung und Topics aktualisieren
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN darf Repo-Metadaten nicht aendern. Optionaler PAT
+          # (Secret RELEASE_PAT, Scope: repo + admin:repo) erlaubt es.
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           NEW_DESCRIPTION: ${{ github.event.inputs.description }}
         run: |
           if [ -z "$NEW_DESCRIPTION" ]; then
             NEW_DESCRIPTION="ASCII Sci-Fi Horror Roguelike - erkunde prozedural generierte, verlassene Raumstationen"
           fi
           echo "Setze Beschreibung: $NEW_DESCRIPTION"
-          gh api --method PATCH "repos/${GITHUB_REPOSITORY}" -f description="$NEW_DESCRIPTION" || \
-            echo "WARNUNG: Beschreibung konnte nicht gesetzt werden (Berechtigung fehlt)"
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}" -f description="$NEW_DESCRIPTION" \
+            || echo "WARNUNG: Beschreibung konnte nicht gesetzt werden. Secret RELEASE_PAT (admin:repo) noetig."
           echo '{"names":["game","roguelike","rpg","ascii","horror","sci-fi","electron","react","vite","typescript"]}' \
-            | gh api --method PUT "repos/${GITHUB_REPOSITORY}/topics" --input - || \
-            echo "WARNUNG: Topics konnten nicht gesetzt werden (Berechtigung fehlt)"
+            | gh api --method PUT "repos/${GITHUB_REPOSITORY}/topics" --input - \
+            || echo "WARNUNG: Topics konnten nicht gesetzt werden. Secret RELEASE_PAT (admin:repo) noetig."
 
       - name: Release erstellen
         env:
