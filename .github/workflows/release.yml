@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  metadata: write
 
 jobs:
   release:
@@ -52,18 +53,20 @@ jobs:
           test -n "$(ls release/*.AppImage)"
 
       - name: Repository-Beschreibung und Topics aktualisieren
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_DESCRIPTION: ${{ github.event.inputs.description }}
         run: |
-          if [ -n "$NEW_DESCRIPTION" ]; then
-            gh api --method PATCH "repos/${GITHUB_REPOSITORY}" -f description="$NEW_DESCRIPTION"
-          else
-            gh api --method PATCH "repos/${GITHUB_REPOSITORY}" \
-              -f description="ASCII Sci-Fi Horror Roguelike - erkunde prozedural generierte, verlassene Raumstationen"
+          if [ -z "$NEW_DESCRIPTION" ]; then
+            NEW_DESCRIPTION="ASCII Sci-Fi Horror Roguelike - erkunde prozedural generierte, verlassene Raumstationen"
           fi
+          echo "Setze Beschreibung: $NEW_DESCRIPTION"
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}" -f description="$NEW_DESCRIPTION" || \
+            echo "WARNUNG: Beschreibung konnte nicht gesetzt werden (Berechtigung fehlt)"
           echo '{"names":["game","roguelike","rpg","ascii","horror","sci-fi","electron","react","vite","typescript"]}' \
-            | gh api --method PUT "repos/${GITHUB_REPOSITORY}/topics" --input -
+            | gh api --method PUT "repos/${GITHUB_REPOSITORY}/topics" --input - || \
+            echo "WARNUNG: Topics konnten nicht gesetzt werden (Berechtigung fehlt)"
 
       - name: Release erstellen
         env:
