@@ -16,7 +16,6 @@ on:
 
 permissions:
   contents: write
-  metadata: write
 
 jobs:
   release:
