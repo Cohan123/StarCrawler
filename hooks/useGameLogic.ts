@@ -13,6 +13,7 @@ import { getFlavorText } from '../utils/flavorText';
 import { initialState } from '../data/initialState';
 import { MAP_HEIGHT, MAP_WIDTH, TERMINAL_COUNT } from '../utils/gameConfig';
 import { computeVisibility } from '../utils/visibility';
+import { createExplosion, createImpact, createMuzzleFlash, createNova, createProjectile, FX_COLORS } from '../utils/effects';
 
 const rollDice = () => {
     return Math.floor(Math.random() * 6) + 1;
@@ -143,14 +144,15 @@ export const useGameLogic = (onGameOver: () => void) => {
                 if (nearestEnemy) {
                     nearestEnemy.health -= 5;
                     nearestEnemy.justHit = true;
-                    // Visual
+                    // Visual - gluehendes Projektil mit Leuchtspur
                     addEffectInternal({
-                        type: 'projectile',
-                        char: '*',
-                        color: 'text-yellow-500',
-                        startPos: device.position,
-                        endPos: nearestEnemy.position,
-                        duration: 100
+                        ...createProjectile(device.position, nearestEnemy.position, {
+                            color: FX_COLORS.ember,
+                            glow: FX_COLORS.ember,
+                            char: '*',
+                            duration: 100,
+                            className: 'text-yellow-400 font-bold',
+                        }),
                     });
                      addEffectInternal({ type: 'floating_text', position: nearestEnemy.position, text: `-5`, color: 'text-yellow-500', duration: 800 });
                 }
@@ -744,17 +746,23 @@ export const useGameLogic = (onGameOver: () => void) => {
              newEnemies[enemyIndex] = enemy;
          }
          
-         // Visuals - Ranged Projectile
+         // Visuals - Ranged Projectile (gluehend, mit Leuchtspur und Mündungsfeuer)
          const newVisualEffects = [...prevState.visualEffects];
          newVisualEffects.push({
              id: Math.random().toString(36),
-             type: 'projectile',
-             char: '*',
-             color: 'text-red-500 font-bold',
-             startPos: player.position,
-             endPos: enemy.position,
+             ...createProjectile(player.position, enemy.position, {
+                 color: FX_COLORS.blood,
+                 glow: FX_COLORS.blood,
+                 char: '*',
+                 duration: 200,
+             }),
              startTime: Date.now(),
-             duration: 200,
+         });
+
+         newVisualEffects.push({
+             id: Math.random().toString(36),
+             ...createMuzzleFlash(player.position),
+             startTime: Date.now(),
          });
 
          newVisualEffects.push({
@@ -927,12 +935,8 @@ export const useGameLogic = (onGameOver: () => void) => {
               const newVisualEffects = [...prevState.visualEffects];
               newVisualEffects.push({
                   id: Math.random().toString(36),
-                  type: 'particle',
-                  char: "'",
-                  color: 'text-yellow-500 font-bold',
-                  position: targetEnemy.position,
-                  startTime: Date.now(),
-                  duration: 400
+                  ...createImpact(targetEnemy.position, { color: FX_COLORS.ember }),
+                  startTime: Date.now()
               });
               newVisualEffects.push({
                   id: Math.random().toString(36),
@@ -1366,12 +1370,7 @@ export const useGameLogic = (onGameOver: () => void) => {
                  const newVisualEffects = [...prevState.visualEffects];
                  newVisualEffects.push({
                      id: Math.random().toString(),
-                     type: 'explosion',
-                     char: '*',
-                     color: 'text-yellow-500',
-                     position: interactionTarget!.pos,
-                     radius: 1.5,
-                     duration: 400,
+                     ...createExplosion(interactionTarget!.pos, { radius: 1.5, color: FX_COLORS.fire }),
                      startTime: Date.now()
                  });
 
@@ -1495,12 +1494,13 @@ export const useGameLogic = (onGameOver: () => void) => {
               // Add a nice visual effect for successful hack
               newVisualEffects.push({
                  id: Math.random().toString(),
-                 type: 'nova',
-                 char: '101',
-                 color: 'text-green-500 font-bold',
-                 position: terminalPos,
-                 radius: 8,
-                 duration: 1000,
+                 ...createNova(terminalPos, 8, {
+                     color: '#4ade80',
+                     char: '101',
+                     textColor: 'text-green-400 font-bold',
+                     life: 1000,
+                     intensity: 0.75,
+                 }),
                  startTime: Date.now()
               });
           }
@@ -1659,12 +1659,13 @@ export const useGameLogic = (onGameOver: () => void) => {
                  });
                  // EMP Nova Effect (Blue)
                  addEffectInternal({
-                     type: 'nova',
-                     char: '*',
-                     color: 'text-blue-400 bg-blue-500/30',
-                     position: newPlayer.position,
-                     radius: radius,
-                     duration: 500
+                     ...createNova(newPlayer.position, radius, {
+                         color: FX_COLORS.plasma,
+                         char: '*',
+                         textColor: 'text-blue-300 font-bold',
+                         life: 500,
+                         intensity: 0.8,
+                     }),
                  });
                  msg = `EMP Zündung! ${stunnedCount} Einheiten deaktiviert.`;
                  playSound('defend');
@@ -1685,12 +1686,13 @@ export const useGameLogic = (onGameOver: () => void) => {
                  revealedCells = newRevealed;
                  // Flare Nova Effect (White)
                  addEffectInternal({
-                    type: 'nova',
-                    char: '☼',
-                    color: 'text-yellow-100 bg-white/20',
-                    position: newPlayer.position,
-                    radius: revealRadius,
-                    duration: 600
+                    ...createNova(newPlayer.position, revealRadius, {
+                        color: FX_COLORS.gold,
+                        char: '☼',
+                        textColor: 'text-yellow-100 font-bold',
+                        life: 600,
+                        intensity: 0.95,
+                    }),
                  });
                  msg = `Fackel geworfen. Bereich erhellt.`;
                  playSound('interact');
@@ -1735,24 +1737,26 @@ export const useGameLogic = (onGameOver: () => void) => {
                          }
                          // Visual Ping
                          addEffectInternal({
-                             type: 'nova',
-                             char: 'o',
-                             color: 'text-green-500 font-bold',
-                             position: { x: droneX, y: droneY },
-                             radius: 2.5,
-                             duration: 600
+                             ...createNova({ x: droneX, y: droneY }, 2.5, {
+                                 color: '#4ade80',
+                                 char: 'o',
+                                 textColor: 'text-green-400 font-bold',
+                                 life: 600,
+                                 intensity: 0.7,
+                             }),
                          });
                          break;
                      }
                  }
                  revealedCells = droneRevealed;
                  addEffectInternal({
-                     type: 'projectile',
-                     char: '¤',
-                     color: 'text-red-500 font-bold',
-                     startPos: newPlayer.position,
-                     endPos: { x: droneX, y: droneY },
-                     duration: 400
+                     ...createProjectile(newPlayer.position, { x: droneX, y: droneY }, {
+                         color: FX_COLORS.toxic,
+                         glow: FX_COLORS.toxic,
+                         char: '¤',
+                         duration: 400,
+                         className: 'text-lime-400 font-bold',
+                     }),
                  });
                  msg = "Aufklärungsdrohne gestartet.";
                  playSound('interact');
@@ -1871,21 +1875,21 @@ export const useGameLogic = (onGameOver: () => void) => {
                  
                  // Visuals
                  addEffectInternal({
-                     type: 'projectile',
-                     char: 'o',
-                     color: 'text-green-500',
-                     startPos: newPlayer.position,
-                     endPos: explosionPos,
-                     duration: 300
+                     ...createProjectile(newPlayer.position, explosionPos, {
+                         color: FX_COLORS.ember,
+                         glow: FX_COLORS.ember,
+                         char: 'o',
+                         duration: 300,
+                         className: 'text-yellow-400 font-bold',
+                     }),
                  });
                  
                  addEffectInternal({
-                    type: 'explosion',
-                    char: '*',
-                    color: 'text-orange-500 bg-red-900/30',
-                    position: explosionPos,
-                    radius: explosionRadius,
-                    duration: 500
+                    ...createExplosion(explosionPos, {
+                        radius: explosionRadius,
+                        color: FX_COLORS.fire,
+                        intensity: 1,
+                    }),
                  });
 
                  msg = hitSelf ? "Granate detoniert! Du wurdest getroffen." : "Granate detoniert.";
@@ -1919,12 +1923,13 @@ export const useGameLogic = (onGameOver: () => void) => {
                  }
                  revealedCells = scanRevealed;
                  addEffectInternal({
-                    type: 'nova',
-                    char: '+',
-                    color: 'text-cyan-400 font-bold bg-cyan-900/10',
-                    position: newPlayer.position,
-                    radius: scanRadius / 2, // Visual effect smaller than actual reveal to not spam
-                    duration: 1200
+                    ...createNova(newPlayer.position, scanRadius / 2, {
+                        color: FX_COLORS.ice,
+                        char: '+',
+                        textColor: 'text-cyan-300 font-bold',
+                        life: 1200,
+                        intensity: 0.85,
+                    }),
                  });
                  msg = "Umgebungsscan abgeschlossen.";
                  playSound('interact');

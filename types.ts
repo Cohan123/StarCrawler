@@ -154,6 +154,28 @@ export interface DeployedDevice {
 // New Visual Effects System
 export type VisualEffectType = 'projectile' | 'explosion' | 'particle' | 'nova' | 'floating_text';
 
+// Ein einzelnes Partikel (Funke, Glut, Rauch) innerhalb eines Effekts
+export interface ParticleSpec {
+  id: string;
+  dx: number;        // horizontaler Weg in Zellen
+  dy: number;        // vertikaler Weg in Zellen
+  char: string;
+  color: string;     // Hex-Farbe
+  size: number;      // 0.6 - 1.4 (relativ zur Zellenhoehe)
+  duration: number;  // Lebensdauer in ms
+  delay: number;     // Verzoegerung in ms
+  gravity: boolean;  // fallende Glut (Beschleunigung + Sacken)
+}
+
+// Weiche Lichtquelle (Explosion, Projektil, Umgebungslicht)
+export interface LightSpec {
+  radius: number;    // Radius in Zellen
+  color: string;     // Hex-Farbe
+  intensity: number; // 0..1
+  duration: number;  // ms (0 = dauerhaft)
+  expand?: boolean;  // Radius waechst mit der Zeit
+}
+
 export interface VisualEffect {
     id: string;
     type: VisualEffectType;
@@ -168,7 +190,18 @@ export interface VisualEffect {
     // For Explosions/Particles/Nova/Text
     position?: Position;
     radius?: number;
+    // --- Moderne Effekte ---
+    glow?: string;        // Hex-Farbe des Leuchtens
+    glowStrength?: number; // 0..1, steuert die Text-Schatten-Staerke
+    glyphColor?: string;  // Hex-Farbe des Effektzeichens (Canvas-Rendering)
+    trail?: boolean;      // Projektil zieht eine Spur
+    particles?: ParticleSpec[];
+    light?: LightSpec;
+    ringDuration?: number; // Dauer des Rings/der Nova (Standard: duration)
 }
+
+// Effekt-Spezifikation ohne die vom State vergebenen Felder
+export type EffectSpec = Omit<VisualEffect, 'id' | 'startTime'>;
 
 export type HazardZoneType = 'none' | 'radiation' | 'vacuum';
 

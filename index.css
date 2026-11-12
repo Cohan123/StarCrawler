@@ -99,3 +99,7 @@
 .shake-screen {
   animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
+
+/* Moderne Effekte (Partikel, weiches Licht, gluehende Projektile) werden
+   vollstaendig auf Canvas gezeichnet - siehe components/FxLayer.tsx.
+   Daher sind hier keine weiteren Effekt-Klassen noetig. */

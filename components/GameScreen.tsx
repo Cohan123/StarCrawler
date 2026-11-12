@@ -1,6 +1,8 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { CellType, Position, Enemy, Discharge, GroundItem, VisualEffect, DeployedDevice } from '../types';
+import FxLayer from './FxLayer';
+import { MAP_HEIGHT, MAP_WIDTH } from '../utils/gameConfig';
 
 interface GameScreenProps {
   map: CellType[][];
@@ -54,12 +56,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
     onTileClick,
     onTileHover,
     visualEffects = [],
-    deployedDevices = [] // Default to empty
+    deployedDevices = []
 }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [tick, setTick] = useState(0); 
+  const preRef = useRef<HTMLPreElement>(null);
   
   // Drag State
   const [isDragging, setIsDragging] = useState(false);
@@ -67,18 +69,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const [scrollPos, setScrollPos] = useState({ left: 0, top: 0 });
   const [hasMoved, setHasMoved] = useState(false); 
 
-  // Animation Loop for visual effects
-  useEffect(() => {
-      if (visualEffects.length === 0) return;
-      
-      let animationFrameId: number;
-      const animate = () => {
-          setTick(Date.now());
-          animationFrameId = requestAnimationFrame(animate);
-      };
-      animate();
-      return () => cancelAnimationFrame(animationFrameId);
-  }, [visualEffects]);
+  // Kein eigener Animations-Tick hier: Die Effekte werden im Canvas-Renderer
+  // (FxLayer) mit einem eigenen requestAnimationFrame gezeichnet. Ein React-Re-Render
+  // pro Frame wuerde das 80x35-ASCII-Grid (2800 Spans) komplett neu aufbauen.
 
   const dischargePositions = useMemo(() => new Set(discharges.map(d => `${d.position.x},${d.position.y}`)), [discharges]);
   const itemPositions = useMemo(() => {
@@ -93,59 +86,13 @@ const GameScreen: React.FC<GameScreenProps> = ({
       return map;
   }, [deployedDevices]);
 
-  // Pre-calculate active visual effects for the current frame
-  const activeEffectsMap = useMemo(() => {
-      const effectMap = new Map<string, VisualEffect>();
-      const now = Date.now();
-
-      visualEffects.forEach(effect => {
-          if (effect.type === 'floating_text') return; 
-
-          const progress = (now - effect.startTime) / effect.duration;
-          if (progress > 1) return;
-
-          if (effect.type === 'projectile' && effect.startPos && effect.endPos) {
-              const dx = effect.endPos.x - effect.startPos.x;
-              const dy = effect.endPos.y - effect.startPos.y;
-              const currentX = Math.round(effect.startPos.x + dx * progress);
-              const currentY = Math.round(effect.startPos.y + dy * progress);
-              effectMap.set(`${currentX},${currentY}`, effect);
-          } else if (effect.type === 'explosion' && effect.position && effect.radius) {
-              // Draw circle
-              const currentRadius = effect.radius * progress;
-              const r = Math.ceil(currentRadius);
-              for (let y = effect.position.y - r; y <= effect.position.y + r; y++) {
-                  for (let x = effect.position.x - r; x <= effect.position.x + r; x++) {
-                       const dist = Math.sqrt(Math.pow(x - effect.position.x, 2) + Math.pow(y - effect.position.y, 2));
-                       if (Math.abs(dist - currentRadius) < 1.0) { // Ring thickness
-                           effectMap.set(`${x},${y}`, effect);
-                       }
-                  }
-              }
-          } else if (effect.type === 'nova' && effect.position && effect.radius) {
-              // Draw filled expanding circle
-              const currentRadius = effect.radius * progress;
-              const r = Math.ceil(currentRadius);
-              for (let y = effect.position.y - r; y <= effect.position.y + r; y++) {
-                  for (let x = effect.position.x - r; x <= effect.position.x + r; x++) {
-                       const dist = Math.sqrt(Math.pow(x - effect.position.x, 2) + Math.pow(y - effect.position.y, 2));
-                       if (dist <= currentRadius) {
-                           effectMap.set(`${x},${y}`, effect);
-                       }
-                  }
-              }
-          } else if (effect.type === 'particle' && effect.position) {
-              const dropOffset = Math.floor(progress * 2); 
-              effectMap.set(`${effect.position.x},${effect.position.y + dropOffset}`, effect);
-          }
-      });
-      return effectMap;
-  }, [visualEffects, tick]); 
+  // Aktive Effektzeichen werden vom Canvas-Renderer (FxLayer) gezeichnet,
+  // damit das 80x35-ASCII-Grid nicht pro Frame neu gerendert werden muss.
 
   const activeFloatingTexts = useMemo(() => {
       const now = Date.now();
       return visualEffects.filter(e => e.type === 'floating_text' && now - e.startTime < e.duration);
-  }, [visualEffects, tick]);
+  }, [visualEffects]);
   
   const handleZoom = (delta: number) => {
     setZoomLevel(prev => Math.min(Math.max(prev + delta, 0.5), 2.5));
@@ -154,49 +101,49 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // --- Mouse / Touch Handlers ---
 
   const handleMouseDown = (e: React.MouseEvent) => {
-      if (!scrollContainerRef.current) return;
-      setIsDragging(true);
-      setHasMoved(false);
-      setStartPos({ x: e.pageX, y: e.pageY });
-      setScrollPos({ left: scrollContainerRef.current.scrollLeft, top: scrollContainerRef.current.scrollTop });
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setHasMoved(false);
+    setStartPos({ x: e.pageX, y: e.pageY });
+    setScrollPos({ left: scrollContainerRef.current.scrollLeft, top: scrollContainerRef.current.scrollTop });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.dataset.x && target.dataset.y) {
-          onTileHover(parseInt(target.dataset.x), parseInt(target.dataset.y));
-      }
+    const target = e.target as HTMLElement;
+    if (target.dataset.x && target.dataset.y) {
+        onTileHover(parseInt(target.dataset.x), parseInt(target.dataset.y));
+    }
 
-      if (!isDragging || !scrollContainerRef.current) return;
-      e.preventDefault();
-      const x = e.pageX - startPos.x;
-      const y = e.pageY - startPos.y;
-      
-      if (Math.abs(x) > 5 || Math.abs(y) > 5) {
-          setHasMoved(true);
-      }
-      
-      scrollContainerRef.current.scrollLeft = scrollPos.left - x;
-      scrollContainerRef.current.scrollTop = scrollPos.top - y;
+    if (!isDragging || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - startPos.x;
+    const y = e.pageY - startPos.y;
+    
+    if (Math.abs(x) > 5 || Math.abs(y) > 5) {
+        setHasMoved(true);
+    }
+    
+    scrollContainerRef.current.scrollLeft = scrollPos.left - x;
+    scrollContainerRef.current.scrollTop = scrollPos.top - y;
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
-      setIsDragging(false);
-      
-      if (!hasMoved) {
-          const target = e.target as HTMLElement;
-          if (target.dataset.x && target.dataset.y) {
-              onTileClick(parseInt(target.dataset.x), parseInt(target.dataset.y));
-          }
-      }
+    setIsDragging(false);
+    
+    if (!hasMoved) {
+        const target = e.target as HTMLElement;
+        if (target.dataset.x && target.dataset.y) {
+            onTileClick(parseInt(target.dataset.x), parseInt(target.dataset.y));
+        }
+    }
   };
 
   const handleMouseLeave = () => {
-      setIsDragging(false);
-      onTileHover(-1, -1); 
+    setIsDragging(false);
+    onTileHover(-1, -1); 
   };
 
-  const renderWithColors = () => {
+  const renderWithColors = useMemo(() => {
     if (!map || map.length === 0) {
       return null;
     }
@@ -206,32 +153,26 @@ const GameScreen: React.FC<GameScreenProps> = ({
           const coord = `${x},${y}`;
           const isVisible = visibleCells.has(coord);
           const isRevealed = revealedCells.has(coord);
-          const activeEffect = activeEffectsMap.get(coord);
 
           const spanProps = {
               'data-x': x,
               'data-y': y,
               className: 'cursor-crosshair hover:bg-white/10 transition-colors duration-75 inline-block w-[1ch] h-[1em]',
-              key: x
           };
-
-          // Render Active Effect (Priority 1)
-          if (activeEffect && isVisible) {
-              return <span {...spanProps} className={`${spanProps.className} ${activeEffect.color}`}>{activeEffect.char}</span>
-          }
+          const key = x;
 
           if (playerPos.x === x && playerPos.y === y) {
             const playerClass = playerHurt ? "text-white font-bold animate-pulse brightness-200" : "text-yellow-300";
-            return <span {...spanProps} className={`${spanProps.className} ${playerClass}`}>@</span>;
+            return <span key={key} {...spanProps} className={`${spanProps.className} ${playerClass}`}>@</span>;
           }
 
           if (isVisible && dischargePositions.has(coord)) {
-            return <span {...spanProps} className={`${spanProps.className} text-yellow-300 animate-pulse`}>‰</span>;
+            return <span key={key} {...spanProps} className={`${spanProps.className} text-yellow-300 animate-pulse`}>‰</span>;
           }
           
           const device = devicePositions.get(coord);
           if (device && isVisible) {
-              return <span {...spanProps} className={`${spanProps.className} ${device.color}`}>{device.char}</span>
+            return <span key={key} {...spanProps} className={`${spanProps.className} ${device.color}`}>{device.char}</span>
           }
 
           const enemy = enemies.find(e => e.position.x === x && e.position.y === y);
@@ -240,32 +181,32 @@ const GameScreen: React.FC<GameScreenProps> = ({
             if (enemy.isBoss) {
                 enemyClass += " bg-purple-900/50 rounded-sm";
             }
-            return <span {...spanProps} className={`${spanProps.className} ${enemyClass}`}>{enemy.char}</span>
+            return <span key={key} {...spanProps} className={`${spanProps.className} ${enemyClass}`}>{enemy.char}</span>
           }
           
           const item = itemPositions.get(coord);
           if(item && isVisible) {
-              return <span {...spanProps} className={`${spanProps.className} text-purple-400 animate-pulse`}>*</span>;
+            return <span key={key} {...spanProps} className={`${spanProps.className} text-purple-400 animate-pulse`}>*</span>;
           }
 
           if (isVisible) {
               const { char, color } = cellToAscii[cell];
-              return <span {...spanProps} className={`${spanProps.className} ${color}`}>{char}</span>;
+              return <span key={key} {...spanProps} className={`${spanProps.className} ${color}`}>{char}</span>;
           }
 
           if (isRevealed) {
               if (item) {
-                   return <span {...spanProps} className={`${spanProps.className} text-purple-900`}>*</span>;
+                   return <span key={key} {...spanProps} className={`${spanProps.className} text-purple-900`}>*</span>;
               }
               const { char, revealedColor } = cellToAscii[cell];
-              return <span {...spanProps} className={`${spanProps.className} ${revealedColor}`}>{char}</span>;
+              return <span key={key} {...spanProps} className={`${spanProps.className} ${revealedColor}`}>{char}</span>;
           }
 
           return <span {...spanProps}>&nbsp;</span>;
         })}
       </div>
     ));
-  };
+  }, [map, visibleCells, revealedCells, playerPos, playerHurt, enemies, discharges, groundItems, dischargePositions, itemPositions, devicePositions]);
 
 
   return (
@@ -309,9 +250,21 @@ const GameScreen: React.FC<GameScreenProps> = ({
             style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: 'fit-content' }} 
             className="transition-transform duration-200 relative"
           >
-             <pre className="text-sm relative z-10 font-mono tracking-normal leading-tight">
-                {renderWithColors()}
+             <pre ref={preRef} className="text-sm relative font-mono tracking-normal leading-tight">
+                {renderWithColors}
              </pre>
+
+             {/* Weiche Beleuchtung, gluehende Partikel und Effektzeichen.
+                 Wird komplett auf Canvas gezeichnet (kein React-Render pro Frame). */}
+             <FxLayer
+                preRef={preRef}
+                map={map}
+                visibleCells={visibleCells}
+                effects={visualEffects}
+                playerPos={playerPos}
+                enemies={enemies}
+                deployedDevices={deployedDevices}
+             />
 
              {/* Floating Texts Layer */}
              {activeFloatingTexts.map(effect => (
