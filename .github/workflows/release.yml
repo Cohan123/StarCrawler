@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag fuer den Release (z. B. v0.2.0)'
+        required: true
+      description:
+        description: 'Neue Repository-Beschreibung'
+        required: false
+        default: 'ASCII Sci-Fi Horror Roguelike - erkunde prozedural generierte, verlassene Raumstationen'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tag bestimmen
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Dependencies installieren
+        run: npm ci
+
+      - name: Web-Build
+        run: npm run build
+
+      - name: AppImage bauen (Linux x64)
+        run: npx electron-builder --linux AppImage --x64
+
+      - name: AppImage-Build pruefen
+        run: |
+          ls -lh release/*.AppImage
+          test -n "$(ls release/*.AppImage)"
+
+      - name: Repository-Beschreibung und Topics aktualisieren
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_DESCRIPTION: ${{ github.event.inputs.description }}
+        run: |
+          if [ -n "$NEW_DESCRIPTION" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}" -f description="$NEW_DESCRIPTION"
+          else
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}" \
+              -f description="ASCII Sci-Fi Horror Roguelike - erkunde prozedural generierte, verlassene Raumstationen"
+          fi
+          echo '{"names":["game","roguelike","rpg","ascii","horror","sci-fi","electron","react","vite","typescript"]}' \
+            | gh api --method PUT "repos/${GITHUB_REPOSITORY}/topics" --input -
+
+      - name: Release erstellen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          {
+            echo "## StarCrawler $TAG"
+            echo
+            echo "ASCII Sci-Fi Horror Roguelike - erkunde prozedural generierte, verlassene Raumstationen."
+            echo
+            echo "### Neu in dieser Version"
+            echo
+            echo "- **Eigenstaendige Linux-Desktop-App** (Electron 44) als portable AppImage"
+            echo "- Desktop-Integration: Starter-Skript und Menueeintrag fuer die Desktop-Umgebung"
+            echo "- `vite.config.ts` mit \`base: './'\` fuer die \`file://\`-Ausfuehrung im Electron-Shell"
+            echo "- Vollstaendig ueberarbeitetes README mit Features, Steuerung und Projektstruktur"
+            echo "- Versionssprung auf 0.2.0 in \`package.json\`, \`metadata.json\` und \`electron/preload.cjs\`"
+            echo
+            echo "### Installation (Linux)"
+            echo
+            echo '```bash'
+            echo "chmod +x StarCrawler-$TAG.AppImage"
+            echo "./StarCrawler-$TAG.AppImage --no-sandbox"
+            echo '```'
+            echo
+            echo "### Aus dem Quellcode"
+            echo
+            echo '```bash'
+            echo "npm install"
+            echo "npm run dev        # Web, http://localhost:3000"
+            echo "npm run electron:dev  # Electron mit Hot-Reload"
+            echo '```'
+            echo
+            echo "Optional: \`GEMINI_API_KEY\` in \`.env.local\` setzen, damit Gemini 2.5 Flash die Logbuecher generiert. Ohne Key laeuft das Spiel vollstaendig mit statischen Lore-Texten."
+          } > release-notes.md
+          gh release create "$TAG" release/*.AppImage \
+            --title "StarCrawler $TAG" \
+            --notes-file release-notes.md
