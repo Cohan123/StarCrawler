@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=StarCrawler
+GenericName=Roguelike RPG
+Comment=StarCrawler - ASCII Sci-Fi Horror Roguelike
+Exec=/home/dapschi/Dokumente/Daten/Vibecoding/StarCrawler/StarCrawler.sh %U
+Path=/home/dapschi/Dokumente/Daten/Vibecoding/StarCrawler
+Terminal=false
+Type=Application
+Categories=Game;RolePlaying;
+Keywords=game;roguelike;rpg;space;ascii;
+Icon=/home/dapschi/Dokumente/Daten/Vibecoding/StarCrawler/Bilder/Chraktere/Marine.png
+StartupWMClass=starcrawler
