@@ -74,42 +74,46 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          cat > release-notes.md <<'EOF'
-          ## StarCrawler v0.2.0
+          VERSION="${TAG#v}"
+          cat > release-notes.md <<EOF
+          ## StarCrawler v${VERSION}
 
           ASCII Sci-Fi Horror Roguelike - erkunde prozedural generierte, verlassene Raumstationen.
 
           ### Neu in dieser Version
 
-          - **Eigenstaendige Linux-Desktop-App** (Electron 44) als portable AppImage
-          - Desktop-Integration: Starter-Skript `StarCrawler.sh` und Menueeintrag `StarCrawler-Native.desktop`
-          - `vite.config.ts` mit `base: './'` fuer die `file://`-Ausfuehrung im Electron-Shell
+          - **Moderne Partikel- und Lichteffekte**: Canvas-basierte Effekt-Schicht mit Funken, fallender Glut, weicher Beleuchtung und gluehenden Projektilen
+          - **Explosionen** mit expandierendem Ring, Funkenwolke und ausblendendem Licht
+          - **Gluehende Projektile** mit Leuchtspur und Mündungsfeuer am Abschusspunkt
+          - **Weiche Beleuchtung** fuer Lichtquellen, Terminals, Artefakte, Turrets und den Scheinwerfer des Spielers
+          - Eigenstaendige Linux-Desktop-App (Electron 44) als portable AppImage
+          - Desktop-Integration: Starter-Skript \`StarCrawler.sh\` und Menueeintrag \`StarCrawler-Native.desktop\`
           - Vollstaendig ueberarbeitetes README mit Features, Steuerung und Projektstruktur
-          - Versionssprung auf 0.2.0 in `package.json`, `metadata.json` und `electron/preload.cjs`
+          - Versionssprung auf ${VERSION} in \`package.json\`, \`metadata.json\` und \`electron/preload.cjs\`
 
           ### Installation (Linux)
 
-          ```bash
-          chmod +x StarCrawler-0.2.0.AppImage
-          ./StarCrawler-0.2.0.AppImage --no-sandbox
-          ```
+          \`\`\`bash
+          chmod +x StarCrawler-${VERSION}.AppImage
+          ./StarCrawler-${VERSION}.AppImage --no-sandbox
+          \`\`\`
 
           Das AppImage findest du als Release-Asset unten. Desktop-Eintrag einrichten:
 
-          ```bash
+          \`\`\`bash
           cp StarCrawler-Native.desktop ~/.local/share/applications/
           update-desktop-database ~/.local/share/applications/
-          ```
+          \`\`\`
 
           ### Aus dem Quellcode
 
-          ```bash
+          \`\`\`bash
           npm install
           npm run dev           # Web, http://localhost:3000
           npm run electron:dev  # Electron mit Hot-Reload
-          ```
+          \`\`\`
 
-          Optional: `GEMINI_API_KEY` in `.env.local` setzen, damit Gemini 2.5 Flash die Logbuecher generiert. Ohne Key laeuft das Spiel vollstaendig mit statischen Lore-Texten.
+          Optional: \`GEMINI_API_KEY\` in \`.env.local\` setzen, damit Gemini 2.5 Flash die Logbuecher generiert. Ohne Key laeuft das Spiel vollstaendig mit statischen Lore-Texten.
           EOF
           sed -i 's/^          //' release-notes.md
           if gh release view "$TAG" > /dev/null 2>&1; then
