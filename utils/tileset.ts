@@ -12,6 +12,11 @@ import { CellType } from '../types';
  * extrahieren.md).
  *
  * Raster der Map-Sheets: 32 Spalten x 21 Zeilen, Zellgroesse je Sheet.
+ *
+ * Die Zuordnung der Kacheln wurde **empirisch** am Beispielbild
+ * (`Bilder/Beispiel/Beispiel_Level_Tiles.jpg`) ermittelt: fuer jede Kachel
+ * wurden die hellen Randlinien gemessen bzw. das Muster mit dem Beispiel
+ * verglichen (siehe `Wissen/Game-Assets extrahieren`, Schritt 7).
  */
 
 export interface TileRef {
@@ -49,24 +54,29 @@ export const TILESETS: { name: TilesetName; label: string }[] = [
 /**
  * Zuordnung der Karten-Zelltypen zu Kacheln im Map-Sheet.
  *
- * Zeilen 4-8   = Wandkanten/Ecken/Linien
+ * Cogmind zeichnet Waende als **einzelne Bloecke** (heller Rahmen, heller
+ * Kern), nicht als verbundene Linien. Deshalb gibt es hier bewusst KEIN
+ * Wand-Autotiling - jede Wandzelle bekommt dieselbe Block-Kachel.
+ *
  * Zeilen 9-10  = Boden (glatt, Risse, Schutt, Randstuecke)
  * Zeilen 11-17 = Waende, Tueren, Maschinen, Leitungen, Leitern, Gebaeude
  * Zeilen 18-20 = Paneele, Kisten, Marker, Rand-/Anschnittkacheln
  */
 export const TERRAIN_TILES: Record<CellType, TileRef> = {
   // --- Boden ---
-  [CellType.FLOOR]:               { col: 0,  row: 9  },  // glatter Boden
-  [CellType.RADIATION]:           { col: 13, row: 9  },  // Bodenterror
-  [CellType.VACUUM]:              { col: 1,  row: 9  },  // Risse
-  [CellType.ELECTRICITY]:         { col: 4,  row: 9  },  // Splitter
+  // (1,9) / (2,9): dunkler Boden mit feinem Punktraster (aus dem Beispielbild)
+  [CellType.FLOOR]:               { col: 1,  row: 9  },
+  [CellType.RADIATION]:           { col: 13, row: 9  },  // Bodenterror (aufgebrochen)
+  [CellType.VACUUM]:              { col: 6,  row: 9  },  // Risse
+  [CellType.ELECTRICITY]:         { col: 4,  row: 9  },  // Splitter / Schutt
 
-  // --- Waende (Basis-Kachel; Kanten kommen per Autotiling dazu) ---
-  [CellType.WALL]:                { col: 7,  row: 17 },
+  // --- Waende ---
+  // (3,18): heller Rahmen + heller Kern - identisch mit dem Beispielbild
+  [CellType.WALL]:                { col: 3,  row: 18 },
 
   // --- Tueren ---
-  [CellType.DOOR_CLOSED]:         { col: 11, row: 13 },  // Tuer (geschlossen)
-  [CellType.DOOR_OPEN]:           { col: 12, row: 13 },  // Tuer (offen)
+  [CellType.DOOR_CLOSED]:         { col: 11, row: 13 },
+  [CellType.DOOR_OPEN]:           { col: 12, row: 13 },
 
   // --- Terminals / Stationen ---
   [CellType.TERMINAL_OFF]:        { col: 1,  row: 11 },  // Konsole (aus)
@@ -87,36 +97,17 @@ export const TERRAIN_TILES: Record<CellType, TileRef> = {
 };
 
 /**
- * Wand-Autotiling: Die Kachel wird nach den vier Nachbarn (N/O/S/W)
- * gewaehlt. Die Kacheln liegen in den Zeilen 4-7 des Map-Sheets.
- *
- * Bitmaske: 1 = Norden, 2 = Osten, 4 = Sueden, 8 = Westen. Das Bit ist
- * gesetzt, wenn an dieser Seite KEINE Wandkante liegt (also der Nachbar
- * keine Wand ist) - dann zeichnet die Kachel hier eine Kante.
- *
- * Die Zuordnung wurde empirisch aus dem Sheet ermittelt: fuer jede Kachel
- * wurden die hellen Randlinien gemessen und so die Maske bestimmt.
+ * Boden-Varianten: Cogmind streut die Bodenkacheln variabel, damit der Boden
+ * nicht wie ein Raster aus identischen Kacheln wirkt. Die dunkelsten
+ * Kacheln (Mittel 13-25, max 115) entsprechen dem Beispielboden (dunkle
+ * Raster mit feinen Punkten). Schutt-Level steigen nach rechts in Zeile 9.
  */
-export const WALL_EDGE_TILES: Record<number, TileRef> = {
-  0:  { col: 11, row: 4 },  // geschlossen (keine Kante)
-  3:  { col: 7,  row: 4 },  // Kante oben + rechts
-  5:  { col: 0,  row: 4 },  // Kante oben + unten
-  6:  { col: 8,  row: 4 },  // Kante rechts + unten
-  7:  { col: 5,  row: 4 },  // Ecke oben links
-  9:  { col: 10, row: 4 },  // Ecke oben rechts
-  10: { col: 1,  row: 4 },  // Kante links + rechts
-  11: { col: 4,  row: 4 },  // Ecke oben links
-  12: { col: 9,  row: 4 },  // Kante unten + links
-  13: { col: 3,  row: 4 },  // Ecke unten links
-  14: { col: 6,  row: 4 },  // Ecke unten rechts
-  15: { col: 2,  row: 4 },  // T-Stuecke (alle Seiten)
-  // Einzelkanten aus den Zeilen 11-13:
-  2:  { col: 8,  row: 11 },  // nur rechts
-  4:  { col: 13, row: 11 },  // nur unten
-  8:  { col: 1,  row: 11 },  // nur links
-  // Maske 1 (nur oben) existiert im Sheet nicht -> naechstliegende Variante
-  1:  { col: 8,  row: 11 },
-};
+export const FLOOR_VARIANTS: TileRef[] = [
+  { col: 30, row: 9 },
+  { col: 31, row: 9 },
+  { col: 30, row: 9 },
+  { col: 31, row: 9 },
+];
 
 /**
  * Zeichen fuer Entities (Spieler, Gegner, Geraete). Sie werden ueber das
@@ -152,18 +143,18 @@ export const cp437Index = (char: string): number | undefined => {
  * Symbole, die besser funktionieren als die ASCII-Zeichen aus dem Spiel.
  */
 export const SPRITE_INDEX = {
-  /** Spieler: Kontroll-Gesicht (cp437 0x01) */
+  /** Spieler: Kontroll-Gesicht */
   player: 0x01,
-  /** Boss: Totenkopf-Zeichen */
+  /** Boss: Totenkopf */
   boss: 0x1f,
   /** Gegner-Roboter: Kreisauge */
   robot: 0x09,
   /** Drohne: Pfeil nach oben */
-  drone: 0x18,
+  drone: 0x19,
   /** Terminal/Konsole */
   terminal: 0x0e,
   /** Gegenstand auf dem Boden: Stern */
   item: 0x2a,
-  /** Barriere:equals */
+  /** Barriere: Gleichheitszeichen */
   barrier: 0x3d,
 } as const;

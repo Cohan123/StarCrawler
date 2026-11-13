@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { CellType, DeployedDevice, Enemy, GroundItem, Position } from '../types';
 import { MAP_HEIGHT, MAP_WIDTH } from '../utils/gameConfig';
-import { cp437Index, SPRITE_INDEX, TERRAIN_TILES, TILESET_SIZES, tilesetUrl, ART_SHEET_URL, TilesetName, WALL_EDGE_TILES, TileRef } from '../utils/tileset';
+import { cp437Index, SPRITE_INDEX, TERRAIN_TILES, FLOOR_VARIANTS, TILESET_SIZES, tilesetUrl, ART_SHEET_URL, TilesetName } from '../utils/tileset';
 
 /**
  * Grafischer Karten-Renderer auf Basis der Cogmind-Tilesets.
@@ -54,35 +54,6 @@ const visibilityOf = (
   if (visibleCells.has(coord)) return 2;
   if (revealedCells.has(coord)) return 1;
   return 0;
-};
-
-/** Zellen, die als Wand behandelt werden (inkl. Tueren). */
-const isWallCell = (map: CellType[][], x: number, y: number): boolean => {
-  const cell = map[y]?.[x];
-  return (
-    cell === CellType.WALL ||
-    cell === CellType.DOOR_CLOSED ||
-    cell === CellType.DOOR_OPEN
-  );
-};
-
-/**
- * Wand-Autotiling: liefert die Kachel, die zur Nachbarschaft passt.
- *
- * Die Kacheln im Cogmind-Sheet zeigen die weisse Wandlinie dort, wo KEIN
- * Wandnachbar angrenzt (die Mauer endet dort). Deshalb ist das Bit gesetzt,
- * wenn der Nachbar in dieser Richtung KEINE Wand ist:
- *   1 = Norden, 2 = Osten, 4 = Sueden, 8 = Westen
- */
-const wallEdgeTile = (map: CellType[][], x: number, y: number): TileRef => {
-  const n = !isWallCell(map, x, y - 1);
-  const e = !isWallCell(map, x + 1, y);
-  const s = !isWallCell(map, x, y + 1);
-  const w = !isWallCell(map, x - 1, y);
-
-  const key = (n ? 1 : 0) | (e ? 2 : 0) | (s ? 4 : 0) | (w ? 8 : 0);
-
-  return WALL_EDGE_TILES[key] ?? TERRAIN_TILES[CellType.WALL];
 };
 
 const TileCanvas: React.FC<TileCanvasProps> = ({
@@ -237,15 +208,13 @@ const TileCanvas: React.FC<TileCanvasProps> = ({
             const ref = TERRAIN_TILES[row[x]];
             if (!ref) continue;
 
-            // Bei sichtbaren Zellen leicht variieren, damit der Boden nicht
-            // wie ein Raster aus uniformen Kacheln wirkt.
+            // Cogmind streut die Bodenkacheln variabel, damit der Boden nicht
+            // wie ein Raster aus identischen Kacheln wirkt. Die Variante wird
+            // deterministisch aus der Position gewaehlt (kein Zufall -> beim
+            // Scrollen keine flackernden Kacheln).
             let tile = ref;
             if (row[x] === CellType.FLOOR) {
-              const variant = (x * 7 + y * 13) % 4;
-              if (variant > 0) tile = { col: variant, row: 9 };
-            } else if (row[x] === CellType.WALL) {
-              // Wandkachel mit passender Kante zum Nachbarraster
-              tile = wallEdgeTile(map, x, y);
+              tile = FLOOR_VARIANTS[(x * 7 + y * 13) % FLOOR_VARIANTS.length];
             }
 
             ctx.globalAlpha = vis === 2 ? 1 : 0.32;
@@ -260,26 +229,6 @@ const TileCanvas: React.FC<TileCanvasProps> = ({
               cellSize,
               cellSize
             );
-
-            // Die Cogmind-Wandkacheln sind sehr dunkel (Mauerlinien auf
-            // schwarzem Grund). Damit die Wand im Spiel lesbar bleibt, wird
-            // sie leicht aufgehellt - der Kontrast zum Boden bleibt erhalten.
-            if (row[x] === CellType.WALL) {
-              ctx.globalAlpha = vis === 2 ? 0.5 : 0.18;
-              ctx.globalCompositeOperation = 'lighter';
-              ctx.drawImage(
-                mapImg,
-                tile.col * cellSize,
-                tile.row * cellSize,
-                cellSize,
-                cellSize,
-                x * cellSize,
-                y * cellSize,
-                cellSize,
-                cellSize
-              );
-              ctx.globalCompositeOperation = 'source-over';
-            }
           }
         }
       } else {
