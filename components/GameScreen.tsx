@@ -2,7 +2,9 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { CellType, Position, Enemy, Discharge, GroundItem, VisualEffect, DeployedDevice } from '../types';
 import FxLayer from './FxLayer';
+import TileCanvas from './TileCanvas';
 import { MAP_HEIGHT, MAP_WIDTH } from '../utils/gameConfig';
+import { TILESETS, TilesetName } from '../utils/tileset';
 
 interface GameScreenProps {
   map: CellType[][];
@@ -62,6 +64,33 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
+  const tileCanvasRef = useRef<HTMLDivElement | null>(null);
+
+  // Grafik- vs. ASCII-Darstellung (umschaltbar wie in Cogmind mit F3)
+  const [graphicsMode, setGraphicsMode] = useState(true);
+  const [tileset, setTileset] = useState<TilesetName>('cogmind16x16.png');
+  const [tilesetOpen, setTilesetOpen] = useState(false);
+
+  // Zellgroesse in Pixeln (fuer Floating-Texts und Effekt-Ebene)
+  const [cellSize, setCellSize] = useState({ w: 8, h: 14 });
+
+  useEffect(() => {
+    const el = graphicsMode ? tileCanvasRef.current : preRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const w = el.offsetWidth / MAP_WIDTH;
+      const h = el.offsetHeight / MAP_HEIGHT;
+      if (w > 0 && h > 0) {
+        setCellSize(prev => (Math.abs(prev.w - w) > 0.01 || Math.abs(prev.h - h) > 0.01 ? { w, h } : prev));
+      }
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [graphicsMode, tileset]);
   
   // Drag State
   const [isDragging, setIsDragging] = useState(false);
@@ -72,6 +101,41 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // Kein eigener Animations-Tick hier: Die Effekte werden im Canvas-Renderer
   // (FxLayer) mit einem eigenen requestAnimationFrame gezeichnet. Ein React-Re-Render
   // pro Frame wuerde das 80x35-ASCII-Grid (2800 Spans) komplett neu aufbauen.
+
+  // Kamera folgt dem Spieler (nur im Grafik-Modus, dort ist die Karte gross).
+  // Eigener rAF-Loop, damit das Nachfuehren weich laeuft und nicht erst
+  // beim naechsten State-Update.
+  useEffect(() => {
+    if (!graphicsMode) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    let raf = 0;
+    const follow = () => {
+      raf = requestAnimationFrame(follow);
+      const cellW = el.scrollWidth / MAP_WIDTH;
+      const cellH = el.scrollHeight / MAP_HEIGHT;
+      if (!cellW || !cellH) return;
+      const targetX = playerPos.x * cellW - el.clientWidth / 2 + cellW / 2;
+      const targetY = playerPos.y * cellH - el.clientHeight / 2 + cellH / 2;
+      el.scrollLeft += (targetX - el.scrollLeft) * 0.15;
+      el.scrollTop += (targetY - el.scrollTop) * 0.15;
+    };
+    raf = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(raf);
+  }, [graphicsMode, playerPos.x, playerPos.y]);
+
+  // F3 schaltet zwischen Grafik- und ASCII-Darstellung um
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F3') {
+        e.preventDefault();
+        setGraphicsMode(m => !m);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const dischargePositions = useMemo(() => new Set(discharges.map(d => `${d.position.x},${d.position.y}`)), [discharges]);
   const itemPositions = useMemo(() => {
@@ -230,6 +294,43 @@ const GameScreen: React.FC<GameScreenProps> = ({
          <button onClick={() => handleZoom(-0.25)} className="w-10 h-10 bg-gray-800 border border-gray-600 text-green-400 font-bold rounded hover:bg-gray-700 active:bg-green-900 shadow-lg">-</button>
       </div>
 
+      {/* Grafik / ASCII umschalten + Tileset waehlen */}
+      <div className="absolute top-2 left-2 z-30 flex items-center gap-2">
+         <button
+            onClick={() => setGraphicsMode(m => !m)}
+            title="Grafik-/ASCII-Darstellung umschalten (F3)"
+            className="px-2 py-1 bg-gray-900/90 border border-gray-700 text-green-400 text-xs uppercase tracking-widest rounded hover:bg-gray-800 shadow-lg"
+         >
+            {graphicsMode ? 'Tiles' : 'ASCII'}
+         </button>
+         {graphicsMode && (
+            <div className="relative">
+               <button
+                  onClick={() => setTilesetOpen(o => !o)}
+                  title="Tileset wechseln"
+                  className="px-2 py-1 bg-gray-900/90 border border-gray-700 text-gray-400 text-xs uppercase tracking-widest rounded hover:bg-gray-800 shadow-lg"
+               >
+                  {TILESETS.find(t => t.name === tileset)?.label ?? tileset}
+               </button>
+               {tilesetOpen && (
+                  <div className="absolute top-full left-0 mt-1 bg-gray-900 border border-gray-700 rounded shadow-lg overflow-hidden">
+                     {TILESETS.map(t => (
+                        <button
+                           key={t.name}
+                           onClick={() => { setTileset(t.name); setTilesetOpen(false); }}
+                           className={`block w-full px-3 py-1 text-left text-xs uppercase tracking-widest ${
+                              t.name === tileset ? 'bg-green-900 text-green-300' : 'text-gray-400 hover:bg-gray-800'
+                           }`}
+                        >
+                           {t.label}
+                        </button>
+                     ))}
+                  </div>
+               )}
+            </div>
+         )}
+      </div>
+
       {/* Scrollable Map Container */}
       <div 
         ref={scrollContainerRef}
@@ -250,14 +351,32 @@ const GameScreen: React.FC<GameScreenProps> = ({
             style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: 'fit-content' }} 
             className="transition-transform duration-200 relative"
           >
-             <pre ref={preRef} className="text-sm relative font-mono tracking-normal leading-tight">
-                {renderWithColors}
-             </pre>
+             {graphicsMode ? (
+                <TileCanvas
+                   map={map}
+                   playerPos={playerPos}
+                   visibleCells={visibleCells}
+                   revealedCells={revealedCells}
+                   enemies={enemies}
+                   discharges={discharges}
+                   groundItems={groundItems}
+                   deployedDevices={deployedDevices}
+                   playerHurt={playerHurt}
+                   tileset={tileset}
+                   onTileClick={onTileClick}
+                   onTileHover={onTileHover}
+                   containerRef={tileCanvasRef}
+                />
+             ) : (
+                <pre ref={preRef} className="text-sm relative font-mono tracking-normal leading-tight">
+                   {renderWithColors}
+                </pre>
+             )}
 
              {/* Weiche Beleuchtung, gluehende Partikel und Effektzeichen.
                  Wird komplett auf Canvas gezeichnet (kein React-Render pro Frame). */}
              <FxLayer
-                preRef={preRef}
+                getGrid={() => (graphicsMode ? tileCanvasRef.current : preRef.current)}
                 map={map}
                 visibleCells={visibleCells}
                 effects={visualEffects}
@@ -272,8 +391,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
                     key={effect.id}
                     className={`absolute floating-text-anim font-bold text-shadow pointer-events-none ${effect.color}`}
                     style={{
-                        left: `calc(${effect.position!.x} * 1ch)`,
-                        top: `calc(${effect.position!.y} * 1em)`,
+                        left: `${(effect.position!.x + 0.5) * cellSize.w}px`,
+                        top: `${(effect.position!.y + 0.5) * cellSize.h}px`,
+                        transform: 'translate(-50%, -100%)',
                         zIndex: 100,
                         fontSize: '0.8rem'
                     }}

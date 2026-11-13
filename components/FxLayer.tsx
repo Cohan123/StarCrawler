@@ -29,7 +29,13 @@ interface Light {
 }
 
 interface FxLayerProps {
-  preRef: React.RefObject<HTMLPreElement | null>;
+  /**
+   * Callback liefert das Element, das exakt die Groesse des Karten-Grids hat
+   * (pre im ASCII-Modus, Canvas im Tiles-Modus). Ein Callback statt eines
+   * Refs, weil beim Moduswechsel das neue Element erst nach dem Render
+   * verfuegbar ist.
+   */
+  getGrid: () => HTMLElement | null;
   map: CellType[][];
   visibleCells: Set<string>;
   effects: VisualEffect[];
@@ -52,7 +58,7 @@ const hexToRgb = (hex: string): [number, number, number] => {
 const BASELINE_OFFSET = 0.78;
 
 const FxLayer: React.FC<FxLayerProps> = ({
-  preRef,
+  getGrid,
   map,
   visibleCells,
   effects,
@@ -161,8 +167,7 @@ const FxLayer: React.FC<FxLayerProps> = ({
   useEffect(() => {
     const fxCanvas = fxCanvasRef.current;
     const glyphCanvas = glyphCanvasRef.current;
-    const pre = preRef.current;
-    if (!fxCanvas || !glyphCanvas || !pre) return;
+    if (!fxCanvas || !glyphCanvas) return;
 
     const fxCtx = fxCanvas.getContext('2d');
     const glyphCtx = glyphCanvas.getContext('2d');
@@ -171,39 +176,62 @@ const FxLayer: React.FC<FxLayerProps> = ({
     let raf = 0;
     let lastW = 0;
     let lastH = 0;
+    // Das Grid-Element kann sich aendern (ASCII <-> Tiles) - daher jedes
+    // Frame neu ermitteln.
+    let grid: HTMLElement | null = null;
 
-    // Canvas an die tatsaechliche Groesse des ASCII-Grids anpassen.
-    // Der <pre> kann beim ersten Render noch 0 Breite haben (z. B. wenn der
-    // Elterncontainer erst eingeblendet wird), daher ResizeObserver statt
+    // Canvas an die tatsaechliche Groesse des Karten-Grids anpassen.
+    // Das Grid-Element kann beim ersten Render noch 0 Breite haben (z. B. wenn
+    // der Elterncontainer erst eingeblendet wird), daher ResizeObserver statt
     // einer reinen Einmal-Messung.
     const syncSize = () => {
-      const preW = pre.offsetWidth;
-      const preH = pre.offsetHeight;
-      if (!preW || !preH) return false;
-      if (lastW === preW && lastH === preH) return true;
-      lastW = preW;
-      lastH = preH;
+      if (!grid) grid = getGrid();
+      if (!grid) return false;
+      const gridW = grid.offsetWidth;
+      const gridH = grid.offsetHeight;
+      if (!gridW || !gridH) return false;
+      if (lastW === gridW && lastH === gridH) return true;
+      lastW = gridW;
+      lastH = gridH;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       for (const c of [fxCanvas, glyphCanvas]) {
-        c.width = Math.round(preW * dpr);
-        c.height = Math.round(preH * dpr);
-        c.style.width = `${preW}px`;
-        c.style.height = `${preH}px`;
-        c.style.left = `${pre.offsetLeft}px`;
-        c.style.top = `${pre.offsetTop}px`;
+        c.width = Math.round(gridW * dpr);
+        c.height = Math.round(gridH * dpr);
+        c.style.width = `${gridW}px`;
+        c.style.height = `${gridH}px`;
+        c.style.left = `${grid.offsetLeft}px`;
+        c.style.top = `${grid.offsetTop}px`;
       }
-      const cs = getComputedStyle(pre);
+      const cs = getComputedStyle(grid);
       glyphCtx.font = `${cs.fontSize} ${cs.fontFamily}`;
       return true;
     };
 
+    // Beobachtet das aktuelle Grid-Element; bei einem Wechsel (ASCII <-> Tiles)
+    // wird der Observer auf das neue Element gesetzt.
+    let observed: Element | null = null;
     const ro = new ResizeObserver(() => syncSize());
-    ro.observe(pre);
+    const rebind = () => {
+      const g = getGrid();
+      if (!g) return;
+      if (g !== grid) {
+        grid = g;
+        lastW = 0;
+        lastH = 0;
+      }
+      if (g !== observed) {
+        if (observed) ro.unobserve(observed);
+        observed = g;
+        ro.observe(g);
+      }
+    };
+    rebind();
     syncSize();
 
     const draw = () => {
       raf = requestAnimationFrame(draw);
 
+      rebind();
       if (!syncSize()) return;
 
       const preW = lastW;
@@ -351,7 +379,7 @@ const FxLayer: React.FC<FxLayerProps> = ({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [preRef]);
+  }, [getGrid]);
 
   return (
     <>

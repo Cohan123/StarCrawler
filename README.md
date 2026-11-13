@@ -10,23 +10,49 @@ StarCrawler ist ein Survival-Horror-Roguelike: du erkundest verlassene, prozedur
 
 | | |
 |---|---|
-| **Version** | 0.3.0 |
+| **Version** | 0.4.0 |
 | **Plattformen** | Linux (x64, AppImage), Windows/macOS via Electron-Build, Web (Vite) |
 | **Stack** | React 19, TypeScript, Vite 6, Electron 44, Google GenAI (Gemini 2.5 Flash) |
+| **Grafik** | Cogmind-Tilesets (v2025.10.22) – Bitmap-Font-Sheets, Raster 32×21 |
 | **KI-Feature** | Generierte Logbucheinträge als Lore-Meister (optional, mit API-Key) |
 
 ## Features
 
+- **Grafische Kartendarstellung** – die Karte wird als echte Kachelgrafik gerendert (Cogmind-Tilesets), umschaltbar auf das klassische ASCII-Grid (**F3**)
 - **Prozedurale Raumstationen** – jeder Sektor wird neu generiert, inkl. Wände, Türen, Terminale, Med-Stationen, Container, Fässer und Artefakte
 - **15 Sektoren Tiefe** – je tiefer, desto feindseliger; am Ende wartet das Shuttlevel
 - **7 Charakterklassen** – Marine, Techniker, Scout, Scavenger, Cyborg, Sprengmeister und Subject D (jeder mit eigenen Stärken, Schwächen und Startausrüstung)
-- **Ascii-UI mit ASCII-Rendering**, Fog of War, Minimap, Shop, Level-Auswahl, Wiki, Handbuch und Highscore-Liste
+- **Fog of War** – sichtbare Zellen hell, nur aufgedeckte abgedunkelt, unerreichbare schwarz
+- **Wand-Autotiling** – Wandkacheln werden automatisch passend zu den Nachbarn gewählt (Ecken, Kanten, T-Stücke)
+- **Minimap, Shop, Level-Auswahl, Wiki, Handbuch und Highscore-Liste**
 - **Kampfsystem** – Nahkampf und Fernkampf, Waffenreichweiten, Trefferboni, Kritische Treffer, Panzerung, Statuseffekte
 - **Gefahrenzonen** – Strahlung (Hüllenkorrosion) und Vakuum (Sauerstoffvorrat)
 - **Inventar, Quick-Slots, Verkaufsshop, Waffenkiste, lootbare Gegner**
 - **Moderne Effekte (Canvas-Renderer)** – Partikel, weiche Beleuchtung und glühende Projektile, siehe unten
 - **KI-Lore** – optional generiert Gemini 2.5 Flash fragmentierte, verstörende Logbucheinträge (mit statischem Fallback ohne Key)
 - **Speichern/Fortsetzen** – lokaler Spielstand, pausiert jederzeit über „Speichern und Beenden"
+
+## Grafik / Tilesets (v0.4.0)
+
+Die Karte wird über **Cogmind-Tilesets** gerendert: Cogmind hat keine klassischen Bild-Tilesets, sondern **Bitmap-Font-Sheets**, die das Spiel selbst „Tileset" nennt (Options → *Tiles* vs. *ASCII*, F3). Genau diese Sheets liegen StarCrawler zugrunde.
+
+| Datei | Inhalt |
+|---|---|
+| `Tilesets/map/cogmind16x16.png` | Standard-Set (32×21 Raster, 16 px Zellen) |
+| `Tilesets/map/cogmind20x20.png` | Großes Set (20 px Zellen) |
+| `Tilesets/map/_default12x12.png` | Kompaktes Set (12 px Zellen) |
+| `Tilesets/cp437_16x16.png` | cp437-Bitmap-Font für Spieler, Gegner und Objekte |
+
+**Umsetzung:**
+- `components/TileCanvas.tsx` – zeichnet Terrain, Fog of War und Entities auf ein Canvas
+- `utils/tileset.ts` – Zuordnung Zelltyp → Kachel, Wand-Autotiling, cp437-Glyphen
+- **F3** schaltet zwischen Grafik- und ASCII-Darstellung um
+- Drei Tileset-Größen umschaltbar (12×12 / 16×16 / 20×20)
+- Kamera folgt dem Spieler, im Grafik-Modus mit weicher Nachführung
+
+Die Zuordnung der Kacheln wurde **empirisch** ermittelt: für jede Kachel wurden die hellen Randlinien gemessen und so die Wandmaske bestimmt (`utils/tileset.ts`).
+
+Herkunft: Cogmind v2025.10.22 (Beta 16), extrahiert nach `Tilests/` – siehe Projektgedächtnis (`Projekte/cogmind.md`, `Wissen/Game-Assets extrahieren.md`).
 
 ## Effekte (v0.3.0)
 
@@ -85,12 +111,13 @@ npm run build:electron     # AppImage + entpacktes Verzeichnis bauen
 
 ```text
 ├── App.tsx              # Haupt-UI, Menü/Spiel-Views, Musik-Logik
-├── components/          # GameScreen, FxLayer, SidePanel, MessageLog, Shop, Wiki, ...
+├── components/          # GameScreen, TileCanvas, FxLayer, SidePanel, Shop, Wiki, ...
 ├── hooks/useGameLogic   # Spielschleife, Turns, KI, Kampf, Inventar
 ├── data/                # Items, Gegner, Initialzustand
-├── utils/               # Map-Generator, Sichtbarkeit, Pathfinder, Audio, Saves, effects
+├── utils/               # Map-Generator, Sichtbarkeit, Pathfinder, Audio, Saves, effects, tileset
 ├── services/            # Gemini-Integration (Logbuch-Generator)
 ├── electron/            # main.cjs / preload.cjs (Desktop-Shell)
+├── Tilesets/            # Cogmind-Map-Sheets + cp437-Art-Sheet
 ├── Musik/ Bilder/       # Soundtracks, Sprites, Item-Bilder
 └── vite.config.ts       # Build-Config (base './' für file://)
 ```
@@ -103,6 +130,8 @@ npm run build:electron     # AppImage + entpacktes Verzeichnis bauen
 - **Schnellplätze:** `1` / `2`
 - **Minimap:** `M`
 - **Neuer Lauf:** `N`
+- **Grafik ↔ ASCII:** `F3` (wie im Cogmind-Original)
+- **Zoom:** `+` / `-` (Buttons oben rechts)
 
 ## Builds
 
