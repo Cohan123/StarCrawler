@@ -10,7 +10,7 @@ StarCrawler ist ein Survival-Horror-Roguelike: du erkundest verlassene, prozedur
 
 | | |
 |---|---|
-| **Version** | 0.4.0 |
+| **Version** | 0.4.1 |
 | **Plattformen** | Linux (x64, AppImage), Windows/macOS via Electron-Build, Web (Vite) |
 | **Stack** | React 19, TypeScript, Vite 6, Electron 44, Google GenAI (Gemini 2.5 Flash) |
 | **Grafik** | Cogmind-Tilesets (v2025.10.22) – Bitmap-Font-Sheets, Raster 32×21 |
@@ -32,7 +32,7 @@ StarCrawler ist ein Survival-Horror-Roguelike: du erkundest verlassene, prozedur
 - **KI-Lore** – optional generiert Gemini 2.5 Flash fragmentierte, verstörende Logbucheinträge (mit statischem Fallback ohne Key)
 - **Speichern/Fortsetzen** – lokaler Spielstand, pausiert jederzeit über „Speichern und Beenden"
 
-## Grafik / Tilesets (v0.4.0)
+## Grafik / Tilesets (v0.4.1)
 
 Die Karte wird über **Cogmind-Tilesets** gerendert: Cogmind hat keine klassischen Bild-Tilesets, sondern **Bitmap-Font-Sheets**, die das Spiel selbst „Tileset" nennt (Options → *Tiles* vs. *ASCII*, F3). Genau diese Sheets liegen StarCrawler zugrunde.
 

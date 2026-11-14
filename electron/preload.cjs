@@ -2,6 +2,6 @@
 const { contextBridge } = require('electron');
 
 contextBridge.exposeInMainWorld('starCrawler', {
-  version: '0.4.0',
+  version: '0.4.1',
   platform: process.platform,
 });
