@@ -13,10 +13,43 @@ import { CellType } from '../types';
  *
  * Raster der Map-Sheets: 32 Spalten x 21 Zeilen, Zellgroesse je Sheet.
  *
- * Die Zuordnung der Kacheln wurde **empirisch** am Beispielbild
- * (`Bilder/Beispiel/Beispiel_Level_Tiles.jpg`) ermittelt: fuer jede Kachel
- * wurden die hellen Randlinien gemessen bzw. das Muster mit dem Beispiel
- * verglichen (siehe `Wissen/Game-Assets extrahieren`, Schritt 7).
+ * ## Zuordnung der Kacheln (empirisch verifiziert)
+ *
+ * Die Zuordnung wurde per Multi-Scale-Normalized-Cross-Correlation gegen die
+ * Referenzgrafiken aus `Bilder/Beispiel/_resources/` bestimmt und anschliessend
+ * visuell gegen das echte Cogmind-Rendering (`Beispiel_Level_Tiles.jpg`)
+ * geprueft. Die Zuordnung wurde anschliessend fuer **jedes** Map-Sheet
+ * (12x12, 14x14, 16x16, 18x18, 20x20) einzeln bestaetigt: die Kacheln
+ * liegen in allen Sheets an **denselben Positionen** (gleiches 32x21-Layout,
+ * nur unterschiedliche Zellgroesse). Deshalb gilt eine einzige
+ * Positions-Tabelle fuer alle Aufloesungen.
+ *
+ * | ASCII | Bedeutung    | Kachel (col,row) | Bemerkung                       |
+ * | ----- | ------------ | ---------------- | ------------------------------- |
+ * | #     | Wand         | (2,18)           | X-Kreuz-Block                   |
+ * | .     | Boden        | (2,17) / (9,17)  | dunkel, 4 Eckpunkte              |
+ * | X     | Aufgang      | (6,17)+(7,17)   | 2 Kacheln breite Rampe           |
+ * | †     | Heilstation  | (18,12)          |                                 |
+ * | ¶     | Terminal     | (11,16)          |                                 |
+ * | o     | Fass         | (5,16)           |                                 |
+ * | ¤     | Behaelter    | (8,13)           |                                 |
+ * | ©     | Artefakt     | (11,11)          |                                 |
+ * | ‡     | Beleuchtung  | -                | kein Tile (nur ASCII/Symbol)    |
+ * | ‰     | Strom        | -                | kein Tile (nur ASCII/Symbol)    |
+ *
+ * ## Einfaerben der Kacheln
+ *
+ * Die Cogmind-Map-Sheets sind rein graustufen (max(R,G,B)-min(R,G,B) = 0).
+ * Cogmind faerbt **nur Objekte** zur Laufzeit ein - im Beispiel-Level ist
+ * das Artefakt (11,11) magenta, waehrend die Waende dort ungesaettigt
+ * (Sättigung ~ 10) und damit grau bleiben. Die Einfaerbung erfolgt daher
+ * ueber die Luminanz der Kachel als Modulator:
+ *
+ *     result = tint * (luminanz / 255)
+ *
+ * So bleibt die Kachelstruktur erhalten, waehrend die hellen Anteile in der
+ * Zielfarbe erscheinen und die dunklen Anteile schwarz bleiben. Eine harte
+ * Schwelle wuerde die Struktur dagegen in einen gefuellten Block zerstauen.
  */
 
 export interface TileRef {
@@ -24,7 +57,7 @@ export interface TileRef {
   row: number;
 }
 
-/** Zellgroessen der mitgelieferten Map-Sheets (Pixel). */
+/** Zellgroessen der mitgelieferden Map-Sheets (Pixel). */
 export const TILESET_SIZES = {
   '_default12x12.png': 12,
   'cogmind16x16.png': 16,
@@ -46,71 +79,93 @@ export const tilesetUrl = (name: TilesetName): string => TILESET_URLS[name];
 export const ART_SHEET_URL = new URL('../Tilesets/cp437_16x16.png', import.meta.url).href;
 
 export const TILESETS: { name: TilesetName; label: string }[] = [
-  { name: '_default12x12.png', label: 'Kompakt (12x12)' },
-  { name: 'cogmind16x16.png', label: 'Standard (16x16)' },
   { name: 'cogmind20x20.png', label: 'Gross (20x20)' },
+  { name: 'cogmind16x16.png', label: 'Standard (16x16)' },
+  { name: '_default12x12.png', label: 'Kompakt (12x12)' },
 ];
 
 /**
  * Zuordnung der Karten-Zelltypen zu Kacheln im Map-Sheet.
  *
- * Cogmind zeichnet Waende als **einzelne Bloecke** (heller Rahmen, heller
- * Kern), nicht als verbundene Linien. Deshalb gibt es hier bewusst KEIN
+ * Cogmind zeichnet Waende als **einzelne Bloecke** (heller Rahmen mit
+ * X-Kreuz), nicht als verbundene Linien. Deshalb gibt es hier bewusst KEIN
  * Wand-Autotiling - jede Wandzelle bekommt dieselbe Block-Kachel.
- *
- * Zeilen 9-10  = Boden (glatt, Risse, Schutt, Randstuecke)
- * Zeilen 11-17 = Waende, Tueren, Maschinen, Leitungen, Leitern, Gebaeude
- * Zeilen 18-20 = Paneele, Kisten, Marker, Rand-/Anschnittkacheln
  */
 export const TERRAIN_TILES: Record<CellType, TileRef> = {
   // --- Boden ---
-  // (1,9) / (2,9): dunkler Boden mit feinem Punktraster (aus dem Beispielbild)
-  [CellType.FLOOR]:               { col: 1,  row: 9  },
+  // (2,17) / (9,17): dunkler Boden mit 4 Eckpunkten (ncc 0.945 gegen das
+  // echte Level-Rendering). Beide Kacheln sind identisch.
+  [CellType.FLOOR]:               { col: 2,  row: 17 },
   [CellType.RADIATION]:           { col: 13, row: 9  },  // Bodenterror (aufgebrochen)
   [CellType.VACUUM]:              { col: 6,  row: 9  },  // Risse
   [CellType.ELECTRICITY]:         { col: 4,  row: 9  },  // Splitter / Schutt
 
   // --- Waende ---
-  // (3,18): heller Rahmen + heller Kern - identisch mit dem Beispielbild
-  [CellType.WALL]:                { col: 3,  row: 18 },
+  // (2,18): heller X-Kreuz-Block - identisch mit dem Beispielbild
+  [CellType.WALL]:                { col: 2,  row: 18 },
 
   // --- Tueren ---
   [CellType.DOOR_CLOSED]:         { col: 11, row: 13 },
   [CellType.DOOR_OPEN]:           { col: 12, row: 13 },
 
   // --- Terminals / Stationen ---
-  [CellType.TERMINAL_OFF]:        { col: 1,  row: 11 },  // Konsole (aus)
-  [CellType.TERMINAL_ON]:         { col: 0,  row: 13 },  // Konsole (aktiv)
-  [CellType.HEALING_TERMINAL]:         { col: 9,  row: 13 },
-  [CellType.HEALING_TERMINAL_USED]:    { col: 9,  row: 13 },
+  [CellType.TERMINAL_OFF]:        { col: 11, row: 16 },  // Konsole (aus)
+  [CellType.TERMINAL_ON]:         { col: 11, row: 16 },  // Konsole (aktiv)
+  [CellType.HEALING_TERMINAL]:         { col: 18, row: 12 },
+  [CellType.HEALING_TERMINAL_USED]:    { col: 18, row: 12 },
 
   // --- Objekte ---
-  [CellType.ENTRANCE]:            { col: 15, row: 19 },
-  [CellType.EXIT]:                { col: 14, row: 19 },
+  [CellType.ENTRANCE]:            { col: 6,  row: 17 },  // Rampe links
+  [CellType.EXIT]:                { col: 7,  row: 17 },  // Rampe rechts
   [CellType.LIGHT_SOURCE]:        { col: 6,  row: 11 },  // Lampe
-  [CellType.CHEST_CLOSED]:        { col: 3,  row: 19 },  // Truhe (geschlossen)
-  [CellType.CHEST_OPEN]:          { col: 2,  row: 19 },  // Truhe (offen)
-  [CellType.BARREL]:              { col: 2,  row: 19 },  // Fass
-  [CellType.BARREL_OPEN]:         { col: 3,  row: 19 },
-  [CellType.ARTIFACT]:            { col: 4,  row: 18 },  // Artefakt-Paneel
+  [CellType.CHEST_CLOSED]:        { col: 8,  row: 13 },  // Truhe (geschlossen)
+  [CellType.CHEST_OPEN]:          { col: 6,  row: 14 },  // Truhe (offen)
+  [CellType.BARREL]:              { col: 5,  row: 16 },  // Fass
+  [CellType.BARREL_OPEN]:         { col: 10, row: 13 },  // Fass (offen)
+  [CellType.ARTIFACT]:            { col: 11, row: 11 },  // Artefakt
   [CellType.SHUTTLE]:             { col: 19, row: 15 },  // Shuttlegeraet
 };
 
 /**
  * Boden-Varianten: Cogmind streut die Bodenkacheln variabel, damit der Boden
- * nicht wie ein Raster aus identischen Kacheln wirkt. Die dunkelsten
- * Kacheln (Mittel 13-25, max 115) entsprechen dem Beispielboden (dunkle
- * Raster mit feinen Punkten). Schutt-Level steigen nach rechts in Zeile 9.
+ * nicht wie ein Raster aus identischen Kacheln wirkt. (2,17) und (9,17) sind
+ * identische dunkle Bodenkacheln mit 4 Eckpunkten.
  */
 export const FLOOR_VARIANTS: TileRef[] = [
-  { col: 30, row: 9 },
-  { col: 31, row: 9 },
-  { col: 30, row: 9 },
-  { col: 31, row: 9 },
+  { col: 2, row: 17 },
+  { col: 9, row: 17 },
 ];
 
 /**
- * Zeichen fuer Entities (Spieler, Gegner, Geraete). Sie werden ueber das
+ * Einfaerbung der Kacheln (Cogmind faerbt die Map-Kacheln zur Laufzeit ein).
+ *
+ * Die Cogmind-Map-Sheets sind rein graustufen (max(R,G,B)-min(R,G,B) = 0 im
+ * ganzen Sheet). Cogmind faerbt **nur Objekte** ein - im Beispiel-Level ist
+ * das Artefakt (11,11) magenta, waehrend die Waende dort ungesaettigt
+ * (max(R,G,B)-min(R,G,B) ~ 10) und damit grau bleiben.
+ *
+ * `null` = Originalfarben (unfaerbt). Werte sind CSS-Farben; die
+ * Kachel-Luminanz moduliert die Zielfarbe.
+ */
+export const TILE_TINTS: Partial<Record<CellType, string>> = {
+  [CellType.ENTRANCE]:          '#fb923c',  // orange
+  [CellType.EXIT]:              '#fb923c',  // orange
+  [CellType.HEALING_TERMINAL]:  '#ef4444',  // rot (aktiv)
+  [CellType.HEALING_TERMINAL_USED]: '#9ca3af',  // grau (deaktiv)
+  [CellType.TERMINAL_ON]:       '#22c55e',  // gruen (aktiv)
+  [CellType.TERMINAL_OFF]:      '#3b82f6',  // blau (deaktiv)
+  [CellType.BARREL]:            '#fb923c',  // orange (aktiv)
+  [CellType.BARREL_OPEN]:       '#d97706',  // ocker (deaktiv)
+  [CellType.CHEST_CLOSED]:      '#fb923c',  // orange (aktiv)
+  [CellType.CHEST_OPEN]:        '#d97706',  // ocker (deaktiv)
+  [CellType.ARTIFACT]:          '#facc15',  // gelb
+  [CellType.LIGHT_SOURCE]:      '#fde047',  // gelb (Beleuchtung)
+  [CellType.ELECTRICITY]:       '#fde047',  // gelb (Strom)
+  [CellType.RADIATION]:         '#22c55e',
+};
+
+/**
+ * Zeichen fuer Entities (Spieler, Bosse, Geraete). Sie werden ueber das
  * cp437-Art-Sheet gerendert (16x16-Raster, vollstaendige Code-Page-437).
  */
 export const CP437_FALLBACK: Record<string, number> = {

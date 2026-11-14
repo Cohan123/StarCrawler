@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { CellType, DeployedDevice, Enemy, GroundItem, Position } from '../types';
 import { MAP_HEIGHT, MAP_WIDTH } from '../utils/gameConfig';
-import { cp437Index, SPRITE_INDEX, TERRAIN_TILES, FLOOR_VARIANTS, TILESET_SIZES, tilesetUrl, ART_SHEET_URL, TilesetName } from '../utils/tileset';
+import { cp437Index, SPRITE_INDEX, TERRAIN_TILES, FLOOR_VARIANTS, TILE_TINTS, TILESET_SIZES, tilesetUrl, ART_SHEET_URL, TilesetName } from '../utils/tileset';
 
 /**
  * Grafischer Karten-Renderer auf Basis der Cogmind-Tilesets.
@@ -41,6 +41,17 @@ const hexToRgba = (hex: string, alpha: number): string => {
   const g = parseInt(full.slice(2, 4), 16);
   const b = parseInt(full.slice(4, 6), 16);
   return `rgba(${r},${g},${b},${alpha})`;
+};
+
+/** Hex-Farbe als RGB-Tupel (0-255). */
+const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  return {
+    r: parseInt(full.slice(0, 2), 16),
+    g: parseInt(full.slice(2, 4), 16),
+    b: parseInt(full.slice(4, 6), 16),
+  };
 };
 
 /** Sichtbarkeit einer Zelle: 0 = unbekannt, 1 = aufgedeckt, 2 = sichtbar. */
@@ -96,6 +107,11 @@ const TileCanvas: React.FC<TileCanvasProps> = ({
 
   // Masken der cp437-Glyphen (nur helle Pixel), einmalig beim Laden berechnet
   const glyphMaskRef = useRef<Map<number, ImageData>>(new Map());
+
+  // Eingefaerbte Kacheln: Cogmind faerbt die Map-Kacheln zur Laufzeit ein
+  // (das Sheet ist rein grau, im Spiel erscheinen z.B. Artefakte magenta).
+  // Cache-Key: Tilesetname + Kachelposition + Zielfarbe.
+  const tintedTileCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
   const buildGlyphMasks = (img: HTMLImageElement) => {
     const masks = new Map<number, ImageData>();
@@ -198,6 +214,66 @@ const TileCanvas: React.FC<TileCanvasProps> = ({
 
       // --- Terrain ---
       if (mapImg) {
+        /**
+         * Zeichnet eine Map-Kachel optional eingefaerbt.
+         *
+         * Cogmind faerbt nur **Objekte** ein (Waende/Boden bleiben grau). Die
+         * Luminanz der Kachel MODULIERT dabei die Zielfarbe:
+         *
+         *     result = tint * (luminanz / 255)
+         *
+         * So bleibt die Kachelstruktur erhalten (z.B. der X-Kreuz der Wand),
+         * waehrend die hellen Anteile in der Zielfarbe erscheinen und die
+         * dunklen Anteile schwarz bleiben. Eine harte Schwelle wuerde die
+         * Struktur dagegen in einen gefuellten Block zerstauen.
+         *
+         * Das Ergebnis wird gecacht (pro Kachelposition + Farbe eine Variante).
+         */
+        const drawTile = (
+          tile: { col: number; row: number },
+          dx: number,
+          dy: number,
+          tint: string | undefined
+        ) => {
+          const sx = tile.col * cellSize;
+          const sy = tile.row * cellSize;
+
+          if (!tint) {
+            ctx.drawImage(mapImg, sx, sy, cellSize, cellSize, dx, dy, cellSize, cellSize);
+            return;
+          }
+
+          const key = `${tileset}|${tile.col},${tile.row}|${tint}|${cellSize}`;
+          let colored = tintedTileCache.current.get(key);
+          if (!colored) {
+            colored = document.createElement('canvas');
+            colored.width = cellSize;
+            colored.height = cellSize;
+            const cctx = colored.getContext('2d');
+            if (cctx) {
+              cctx.drawImage(mapImg, sx, sy, cellSize, cellSize, 0, 0, cellSize, cellSize);
+              const data = cctx.getImageData(0, 0, cellSize, cellSize);
+              const px = data.data;
+              const rgb = hexToRgb(tint);
+              for (let i = 0; i < px.length; i += 4) {
+                const lum = px[i];
+                if (lum <= 16) {
+                  px[i + 3] = 0;
+                  continue;
+                }
+                const f = lum / 255;
+                px[i] = Math.round(rgb.r * f);
+                px[i + 1] = Math.round(rgb.g * f);
+                px[i + 2] = Math.round(rgb.b * f);
+                px[i + 3] = 255;
+              }
+              cctx.putImageData(data, 0, 0);
+            }
+            tintedTileCache.current.set(key, colored);
+          }
+          ctx.drawImage(colored, dx, dy, cellSize, cellSize);
+        };
+
         for (let y = 0; y < map.length; y++) {
           const row = map[y];
           if (!row) continue;
@@ -218,17 +294,64 @@ const TileCanvas: React.FC<TileCanvasProps> = ({
             }
 
             ctx.globalAlpha = vis === 2 ? 1 : 0.32;
-            ctx.drawImage(
-              mapImg,
-              tile.col * cellSize,
-              tile.row * cellSize,
-              cellSize,
-              cellSize,
-              x * cellSize,
-              y * cellSize,
-              cellSize,
-              cellSize
-            );
+            drawTile(tile, x * cellSize, y * cellSize, TILE_TINTS[row[x]]);
+          }
+        }
+
+        /**
+         * Breite Kacheln (Aufgang/Abgang).
+         *
+         * Die Aufgang-Grafik ist im Cogmind-Sheet ein Sprite ueber **zwei**
+         * Zellen breit: (6,17) = Rampe, (7,17) = Schacht. Sie wird deshalb in
+         * einem zweiten Pass ueber das Terrain gezeichnet und ueberdeckt dabei
+         * die Nachbarzelle - genau wie im Originalspiel.
+         */
+        for (let y = 0; y < map.length; y++) {
+          const row = map[y];
+          if (!row) continue;
+          for (let x = 0; x < row.length; x++) {
+            const cell = row[x];
+            if (cell !== CellType.ENTRANCE && cell !== CellType.EXIT) continue;
+
+            const vis = visibilityOf(visibleCells, revealedCells, x, y);
+            if (vis === 0) continue;
+
+            const tint = TILE_TINTS[cell];
+            const key = `${tileset}|ramp|${tint}|${cellSize}`;
+            let sprite = tintedTileCache.current.get(key);
+            if (!sprite) {
+              const w = cellSize * 2;
+              sprite = document.createElement('canvas');
+              sprite.width = w;
+              sprite.height = cellSize;
+              const sctx = sprite.getContext('2d');
+              if (sctx) {
+                sctx.drawImage(mapImg, 6 * cellSize, 17 * cellSize, cellSize, cellSize, 0, 0, cellSize, cellSize);
+                sctx.drawImage(mapImg, 7 * cellSize, 17 * cellSize, cellSize, cellSize, cellSize, 0, cellSize, cellSize);
+                if (tint) {
+                  const data = sctx.getImageData(0, 0, w, cellSize);
+                  const px = data.data;
+                  const rgb = hexToRgb(tint);
+                  for (let i = 0; i < px.length; i += 4) {
+                    const lum = px[i];
+                    if (lum <= 16) {
+                      px[i + 3] = 0;
+                      continue;
+                    }
+                    const f = lum / 255;
+                    px[i] = Math.round(rgb.r * f);
+                    px[i + 1] = Math.round(rgb.g * f);
+                    px[i + 2] = Math.round(rgb.b * f);
+                    px[i + 3] = 255;
+                  }
+                  sctx.putImageData(data, 0, 0);
+                }
+              }
+              tintedTileCache.current.set(key, sprite);
+            }
+
+            ctx.globalAlpha = vis === 2 ? 1 : 0.32;
+            ctx.drawImage(sprite, x * cellSize, y * cellSize, cellSize * 2, cellSize);
           }
         }
       } else {

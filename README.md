@@ -38,19 +38,38 @@ Die Karte wird über **Cogmind-Tilesets** gerendert: Cogmind hat keine klassisch
 
 | Datei | Inhalt |
 |---|---|
-| `Tilesets/map/cogmind16x16.png` | Standard-Set (32×21 Raster, 16 px Zellen) |
-| `Tilesets/map/cogmind20x20.png` | Großes Set (20 px Zellen) |
+| `Tilesets/map/cogmind20x20.png` | Standard-Set (32×21 Raster, 20 px Zellen) |
+| `Tilesets/map/cogmind16x16.png` | Standard-Set (16 px Zellen) |
 | `Tilesets/map/_default12x12.png` | Kompaktes Set (12 px Zellen) |
 | `Tilesets/cp437_16x16.png` | cp437-Bitmap-Font für Spieler, Gegner und Objekte |
 
+Alle Map-Sheets teilen dasselbe 32×21-Layout – die Kachel an Position (col,row) ist in jeder Auflösung dieselbe Grafik. Die Zuordnung unten gilt daher für **alle drei** Größen.
+
+### ASCII-Symbol → Cogmind-Kachel
+
+| ASCII | Bedeutung | Kachel | Farbe (Objekte) |
+|---|---|---|---|
+| `#` | Wand | (2,18) X-Kreuz-Block | – (bleibt grau) |
+| `.` | Boden | (2,17) / (9,17) | – (bleibt grau) |
+| `X` | Aufgang/Abgang | (6,17)+(7,17), 2 Zellen breit | orange |
+| `†` | Heilstation | (18,12) | rot aktiv / grau deaktiv |
+| `¶` | Terminal | (11,16) | grün aktiv / blau deaktiv |
+| `o` | Fass | (5,16) | orange aktiv / ocker deaktiv |
+| `¤` | Behälter | (8,13) | orange aktiv / ocker deaktiv |
+| `©` | Artefakt | (11,11) | gelb |
+| `‡` | Beleuchtung | – | gelb (nur ASCII) |
+| `‰` | Strom | – | gelb (nur ASCII) |
+
+Die Map-Sheets sind rein graustufen; Cogmind färbt zur Laufzeit **nur Objekte** ein (`result = tint · (luminanz / 255)`). Wände und Boden bleiben unverändert grau.
+
 **Umsetzung:**
 - `components/TileCanvas.tsx` – zeichnet Terrain, Fog of War und Entities auf ein Canvas
-- `utils/tileset.ts` – Zuordnung Zelltyp → Kachel, Wand-Autotiling, cp437-Glyphen
+- `utils/tileset.ts` – Zuordnung Zelltyp → Kachel, Einfärbung, cp437-Glyphen
 - **F3** schaltet zwischen Grafik- und ASCII-Darstellung um
 - Drei Tileset-Größen umschaltbar (12×12 / 16×16 / 20×20)
 - Kamera folgt dem Spieler, im Grafik-Modus mit weicher Nachführung
 
-Die Zuordnung der Kacheln wurde **empirisch** ermittelt: für jede Kachel wurden die hellen Randlinien gemessen und so die Wandmaske bestimmt (`utils/tileset.ts`).
+Die Zuordnung der Kacheln wurde **empirisch** ermittelt: per Multi-Scale-Normalized-Cross-Correlation gegen die Referenzgrafiken, anschließend visuell gegen das echte Cogmind-Rendering und jedes einzelne Map-Sheet geprüft (`utils/tileset.ts`, `Tilesets/README.md`).
 
 Herkunft: Cogmind v2025.10.22 (Beta 16), extrahiert nach `Tilests/` – siehe Projektgedächtnis (`Projekte/cogmind.md`, `Wissen/Game-Assets extrahieren.md`).
 

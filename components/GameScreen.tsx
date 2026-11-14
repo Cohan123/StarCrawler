@@ -22,20 +22,29 @@ interface GameScreenProps {
   deployedDevices?: DeployedDevice[]; // New Prop
 }
 
+/**
+ * ASCII-Symbole und Anzeigefarben der Karte.
+ *
+ * Die Zuordnung folgt der Cogmind-uebersicht
+ * (`Bilder/Beispiel/Programmierprojekte/StarCrawler/Tilesets.md`):
+ * jede Zelle hat ein ASCII-Zeichen, eine Bedeutung und eine Farbe. Die
+ * gleichen Bedeutungen werden im Tiles-Modus ueber die Cogmind-Kacheln
+ * dargestellt (siehe `utils/tileset.ts`).
+ */
 const cellToAscii: Record<CellType, { char: string; color: string; revealedColor: string }> = {
-  [CellType.WALL]: { char: '#', color: 'text-gray-500', revealedColor: 'text-gray-900' },
+  [CellType.WALL]: { char: '#', color: 'text-gray-400', revealedColor: 'text-gray-900' },
   [CellType.FLOOR]: { char: '.', color: 'text-yellow-600', revealedColor: 'text-gray-800' },
   [CellType.DOOR_CLOSED]: { char: '+', color: 'text-yellow-500', revealedColor: 'text-yellow-900' },
   [CellType.DOOR_OPEN]: { char: "'", color: 'text-yellow-600', revealedColor: 'text-yellow-900' },
-  [CellType.TERMINAL_OFF]: { char: '¶', color: 'text-cyan-400 animate-pulse', revealedColor: 'text-cyan-800' },
+  [CellType.TERMINAL_OFF]: { char: '¶', color: 'text-blue-500 animate-pulse', revealedColor: 'text-blue-800' },
   [CellType.TERMINAL_ON]: { char: '¶', color: 'text-green-500', revealedColor: 'text-green-800' },
-  [CellType.ENTRANCE]: { char: 'X', color: 'text-green-400 font-bold', revealedColor: 'text-green-900' },
-  [CellType.EXIT]: { char: 'X', color: 'text-red-500 font-bold', revealedColor: 'text-red-900' },
+  [CellType.ENTRANCE]: { char: 'X', color: 'text-orange-500 font-bold', revealedColor: 'text-orange-900' },
+  [CellType.EXIT]: { char: 'X', color: 'text-orange-500 font-bold', revealedColor: 'text-orange-900' },
   [CellType.LIGHT_SOURCE]: { char: '‡', color: 'text-yellow-300', revealedColor: 'text-yellow-800' },
-  [CellType.CHEST_CLOSED]: { char: '¤', color: 'text-orange-400', revealedColor: 'text-orange-800' },
-  [CellType.CHEST_OPEN]: { char: '¤', color: 'text-gray-600', revealedColor: 'text-gray-800' },
-  [CellType.BARREL]: { char: 'o', color: 'text-yellow-400', revealedColor: 'text-yellow-800' },
-  [CellType.BARREL_OPEN]: { char: '_', color: 'text-gray-600', revealedColor: 'text-gray-900' },
+  [CellType.CHEST_CLOSED]: { char: '¤', color: 'text-orange-500', revealedColor: 'text-orange-800' },
+  [CellType.CHEST_OPEN]: { char: '¤', color: 'text-yellow-700', revealedColor: 'text-gray-800' },
+  [CellType.BARREL]: { char: 'o', color: 'text-orange-500', revealedColor: 'text-orange-800' },
+  [CellType.BARREL_OPEN]: { char: 'o', color: 'text-yellow-700', revealedColor: 'text-gray-900' },
   [CellType.ARTIFACT]: { char: '©', color: 'text-yellow-400 font-bold animate-pulse', revealedColor: 'text-yellow-800' },
   [CellType.RADIATION]: { char: '.', color: 'text-green-600', revealedColor: 'text-green-900' },
   [CellType.VACUUM]: { char: '≈', color: 'text-gray-400', revealedColor: 'text-gray-800' },
@@ -68,7 +77,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
   // Grafik- vs. ASCII-Darstellung (umschaltbar wie in Cogmind mit F3)
   const [graphicsMode, setGraphicsMode] = useState(true);
-  const [tileset, setTileset] = useState<TilesetName>('cogmind16x16.png');
+  // Standard ist das 20x20-Sheet (Cogmind-Vorlage laut Tilesets-Uebersicht).
+  const [tileset, setTileset] = useState<TilesetName>('cogmind20x20.png');
   const [tilesetOpen, setTilesetOpen] = useState(false);
 
   // Zellgroesse in Pixeln (fuer Floating-Texts und Effekt-Ebene)
